@@ -47,7 +47,7 @@ io.on("connection", (socket) => {
     if (lobby) {
       lobby.addPlayer(socket).then(() => {
         io.to(lobby.roomId.toString()).emit('b2f_lobby', lobby.getGameState())
-        
+        io.emit('b2f_gamerooms', getRooms())
       })
     }
   })

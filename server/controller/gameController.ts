@@ -3,9 +3,7 @@ import { Server, Socket } from "socket.io";
 import { Game } from "../models/Game";
 import { GameRoom } from "../models/GameRoom";
 
-
 export class GameController {
-
 
     public roomId: number
     private hostName: string
@@ -41,6 +39,7 @@ export class GameController {
         socket.on('disconnect', () => {
             this.removePlayer(socket)
         })
+
     }
 
     removePlayer = (socket: Socket) => {
@@ -49,7 +48,6 @@ export class GameController {
         this.sockets.splice(i, 1)
         this.io.to(this.roomId.toString()).emit('b2f_lobby', this.getGameState())
 
-        // console.log("removing");
 
     }
 
