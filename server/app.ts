@@ -10,6 +10,7 @@ import { Server, Socket } from 'socket.io'
 import { SocketController } from './controller/socketController'
 import { GameController } from './controller/gameController'
 import { GameRoom } from './models/GameRoom'
+import { DecodedIdToken } from 'firebase-admin/lib/auth/token-verifier'
 
 // APP SETUP
 dotenv.config()
@@ -32,25 +33,44 @@ io.on("connection", (socket) => {
   io.emit('b2f_gamerooms', getRooms())
 
   socket.on('f2b_newLobby', () => {
-    const newRoom = new GameController(io, socket, Date.now())
+    const hostName = ((socket.request as any).currentUser as DecodedIdToken).name
+    const newRoom = new GameController(io, Date.now(), hostName)
     gameRooms.push(newRoom)
 
+    socket.emit('b2f_lobby', newRoom.getGameState())
     io.emit('b2f_gamerooms', getRooms())
   })
 
-  socket.on('f2b_lobby', (data: number) => {
-
+  socket.on('f2b_joinLobby', (data: number) => {
     const lobby = gameRooms.find((r) => { return r.roomId == data })
-
+    
     if (lobby) {
       lobby.addPlayer(socket).then(() => {
         io.to(lobby.roomId.toString()).emit('b2f_lobby', lobby.getGameState())
+        
       })
-
     }
-    // socket.emit('b2f_lobby', lobby)
-
   })
+
+  socket.on('f2b_leaveLobby', (lobbyId: number) => {
+    const lobby = gameRooms.find((r) => { return r.roomId == lobbyId })
+    if (lobby) {
+
+      lobby.removePlayer(socket)
+
+      if (lobby.sockets.length == 0) {
+        const i = gameRooms.indexOf(lobby)
+        gameRooms.splice(i, 1)
+        io.emit('b2f_gamerooms', getRooms())
+      }
+
+      io.to(lobby.roomId.toString()).emit('b2f_lobby', lobby.getGameState())
+    }
+  })
+
+  // socket.on('disconnect', () => {
+    
+  // })
 
 })
 

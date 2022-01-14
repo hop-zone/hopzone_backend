@@ -10,16 +10,15 @@ export class GameController {
     public roomId: number
     private hostName: string
     private io: Server
-    private sockets: Socket[]
+    public sockets: Socket[]
     private game: Game = { players: [], platforms: [] }
     private hasStarted: boolean = false
 
-    constructor(io: Server, socket: Socket, roomId: number) {
+    constructor(io: Server, roomId: number, hostName: string) {
         this.io = io
-        socket.join(roomId.toString())
-        this.sockets = [socket]
+        this.sockets = []
         this.roomId = roomId
-        this.hostName = ((socket.request as any).currentUser as DecodedIdToken).name
+        this.hostName = hostName
     }
 
     addPlayer = async (socket: Socket) => {
@@ -30,9 +29,28 @@ export class GameController {
             return (s.request as any).currentUser as DecodedIdToken
         })
 
-        if (players.find(p => p.uid == user.uid)) return
+
+        const existingPlayer = players.find(p => p.uid == user.uid)
+
+        if (existingPlayer) {
+            this.removePlayer(socket)
+        }
 
         this.sockets.push(socket)
+
+        socket.on('disconnect', () => {
+            this.removePlayer(socket)
+        })
+    }
+
+    removePlayer = (socket: Socket) => {
+        socket.leave(this.roomId.toString())
+        const i = this.sockets.indexOf(socket)
+        this.sockets.splice(i, 1)
+        this.io.to(this.roomId.toString()).emit('b2f_lobby', this.getGameState())
+
+        // console.log("removing");
+
     }
 
     getGameState = (): GameRoom => {
