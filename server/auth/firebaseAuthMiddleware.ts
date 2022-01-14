@@ -1,33 +1,33 @@
 import { Request, Response, NextFunction } from 'express'
+import { Socket } from 'socket.io'
+import { ExtendedError } from 'socket.io/dist/namespace'
 import { verifyToken } from '.'
 
 async function authMiddleware(
-    request: Request,
-    response: Response,
-    next: NextFunction,
+    socket: Socket,
+    next: (err?: ExtendedError | undefined) => void,
 ) {
-    const headerToken = request.headers.authorization
+    // const headerToken = socket.request.headers.authorization
+    const headerToken = socket.handshake.auth.token
 
     if (!headerToken) {
-        next()
-        return
+        next(new Error("No token"))
     }
 
     if (headerToken && headerToken.split(' ')[0] !== 'Bearer') {
-        return response.send({ message: 'Invalid token' }).status(401)
+        next(new Error("Invalid token"))
     }
 
     const token: string = headerToken.split(' ')[1]
-
     verifyToken(token)
         .then(claims => {
 
-            ; (request as any).currentUser = claims
+            ; (socket.request as any).currentUser = claims
             next()
         })
         .catch(error => {
-            response.status(403)
-            return response.send(error)
+
+            next(new Error("something went wrong"))
         })
 }
 
