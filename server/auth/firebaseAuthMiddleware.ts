@@ -9,7 +9,7 @@ async function authMiddleware(
 ) {
     // const headerToken = socket.request.headers.authorization
     const headerToken = socket.handshake.auth.token
-    
+
     if (!headerToken) {
         next(new Error("No token"))
     }
@@ -19,7 +19,6 @@ async function authMiddleware(
     }
 
     const token: string = headerToken.split(' ')[1]
-
     verifyToken(token)
         .then(claims => {
 
