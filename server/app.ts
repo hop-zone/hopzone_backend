@@ -1,5 +1,6 @@
 import express, { Request, Response } from 'express'
 import dotenv from 'dotenv'
+import "reflect-metadata"
 
 import credential from './auth/application-credentials.json'
 import admin, { auth } from 'firebase-admin'
@@ -11,12 +12,36 @@ import { SocketController } from './controller/socketController'
 import { GameController } from './controller/gameController'
 import { GameRoom } from './models/GameRoom'
 import { DecodedIdToken } from 'firebase-admin/lib/auth/token-verifier'
+import { MongoConnectionOptions } from 'typeorm/driver/mongodb/MongoConnectionOptions'
+import { createConnection } from 'typeorm'
 
 // APP SETUP
 dotenv.config()
 initializeApp({
   credential: admin.credential.cert(credential as ServiceAccount)
 })
+
+;(async () => {
+  const conn: MongoConnectionOptions = {
+    name: 'mongodb',
+    type: 'mongodb',
+    url: `mongodb://root:example@127.0.0.1:27017/`,
+    useNewUrlParser: true,
+    synchronize: true,
+    logging: true,
+    useUnifiedTopology: true,
+    entities: [`${__dirname}/entity/*{.ts,.js}`],
+  }
+
+  
+
+  await createConnection(conn)
+    .then((e) => {
+      console.log("success");
+      
+    })
+    .catch(ex => console.log(ex))
+})()
 
 const gameRooms: GameController[] = []
 const activeRooms = []
