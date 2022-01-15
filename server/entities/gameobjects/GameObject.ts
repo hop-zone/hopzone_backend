@@ -9,7 +9,7 @@ interface Point {
 export class GameObject extends BaseEntity {
 
     @ObjectIdColumn()
-    id: ObjectID
+    id?: ObjectID
 
     @Column()
     x?: number
@@ -48,7 +48,7 @@ export class GameObject extends BaseEntity {
         super()
         this.x = xPos
         this.y = yPos
-        this.id = new ObjectID()
+        // this.id = new ObjectID('werxwer')
 
         this.color = Math.random() * 255
     }

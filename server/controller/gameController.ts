@@ -1,69 +1,91 @@
+
 import { DecodedIdToken } from "firebase-admin/lib/auth/token-verifier";
 import { Server, Socket } from "socket.io";
-import { Game } from "../models/Game";
-import { GameRoom } from "../models/GameRoom";
+import { getMongoManager, MongoEntityManager } from "typeorm";
+import { ObjectID } from 'mongodb';
+import { Game } from "../entities/Game";
+import { GameRoom } from "../entities/GameRoom";
+import { User } from "../entities/User";
+
 
 export class GameController {
 
-    public roomId: number
-    private hostName: string
-    private io: Server
-    public sockets: Socket[]
-    private game: Game = { players: [], platforms: [] }
-    private hasStarted: boolean = false
+    public manager: MongoEntityManager
 
-    constructor(io: Server, roomId: number, hostName: string) {
+    public io: Server
+    public hostId: string
+    public players: User[]
+    public roomId: string
+    public game: Game
+    public hasStarted: boolean = false
+
+    get gameState(): GameRoom {
+        const room = new GameRoom()
+        room.roomId = ObjectID(this.roomId)
+        room.players = this.players
+        room.game = this.game
+        room.hasStarted = this.hasStarted
+        room.hostId = this.hostId
+        return room
+    }
+
+    constructor(io: Server) {
+        this.manager = getMongoManager('mongodb')
         this.io = io
-        this.sockets = []
-        this.roomId = roomId
-        this.hostName = hostName
+        this.roomId = ObjectID()
+
+        this.players = []
     }
 
     addPlayer = async (socket: Socket) => {
-        socket.join(this.roomId.toString())
+        socket.join(this.roomId)
+        const user = this.decodeToken(socket)
+        const existingPlayer = this.players.find(p => p.uid == user.uid)
 
-        const user = (socket.request as any).currentUser as DecodedIdToken
-        const players: DecodedIdToken[] = this.sockets.map((s) => {
-            return (s.request as any).currentUser as DecodedIdToken
-        })
-
-
-        const existingPlayer = players.find(p => p.uid == user.uid)
-
-        if (existingPlayer) {
-            this.removePlayer(socket)
+        const newUser = new User()
+        newUser.id = ObjectID()
+        newUser.displayName = user.name ? user.name : 'Guest'
+        newUser.uid = user.uid
+        if (!existingPlayer) {
+            this.players.push(newUser)
         }
 
-        this.sockets.push(socket)
+        if (!this.hostId) {
+            this.hostId = user.uid
+        }
 
-        socket.on('disconnect', () => {
-            this.removePlayer(socket)
-        })
+        await this.saveGameState()
 
     }
 
-    removePlayer = (socket: Socket) => {
-        socket.leave(this.roomId.toString())
-        const i = this.sockets.indexOf(socket)
-        this.sockets.splice(i, 1)
-        this.io.to(this.roomId.toString()).emit('b2f_lobby', this.getGameState())
+    removePlayer = async (socket: Socket) => {
+        const user = this.decodeToken(socket)
+        socket.leave(this.roomId)
+        const newPlayers = this.players.filter((p) => { return p.uid != user.uid })
+        this.players = newPlayers;
 
+        if (user.uid == this.hostId && this.players.length > 0) {
+            this.hostId = this.players[0].uid
+        }
+
+        await this.saveGameState()
 
     }
 
-    getGameState = (): GameRoom => {
-
-        const players: DecodedIdToken[] = this.sockets.map((s) => {
-            return (s.request as any).currentUser as DecodedIdToken
-        })
-
-
-        return {
-            roomId: this.roomId,
-            players: players,
-            game: this.game,
-            hasStarted: this.hasStarted,
-            hostName: this.hostName
+    saveGameState = async () => {
+        const room: GameRoom | undefined = await this.manager.findOne(GameRoom, this.roomId)
+        if (room) {
+            await this.manager.update<GameRoom>(GameRoom, this.roomId, this.gameState)
+            console.log('saved game');
+        } else {
+            const res = await this.manager.save<GameRoom>(this.gameState)
+            this.roomId = res.roomId.toString()
+            console.log('created game');
         }
+    }
+
+
+    decodeToken = (socket: Socket): DecodedIdToken => {
+        return (socket.request as any).currentUser as DecodedIdToken
     }
 }

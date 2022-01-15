@@ -15,7 +15,10 @@ export class GameRoom extends BaseEntity {
     game?: Game
 
     @Column()
-    hostName?: string
+    hostId?: string
+
+    @Column()
+    hasStarted: boolean
 
     @Column(type => User)
     players?: User[]
