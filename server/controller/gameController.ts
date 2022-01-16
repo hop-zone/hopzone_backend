@@ -1,91 +1,92 @@
-
-import { DecodedIdToken } from "firebase-admin/lib/auth/token-verifier";
-import { Server, Socket } from "socket.io";
-import { getMongoManager, MongoEntityManager } from "typeorm";
-import { ObjectID } from 'mongodb';
-import { Game } from "../entities/Game";
-import { GameRoom } from "../entities/GameRoom";
-import { User } from "../entities/User";
-
+import { DecodedIdToken } from 'firebase-admin/lib/auth/token-verifier'
+import { Server, Socket } from 'socket.io'
+import { getMongoManager, MongoEntityManager } from 'typeorm'
+import { ObjectID } from 'mongodb'
+import { Game } from '../entities/Game'
+import { GameRoom } from '../entities/GameRoom'
+import { User } from '../entities/User'
+import { resolve } from 'path/posix'
+import { toPromise } from '../utils/toPromise'
 
 export class GameController {
+  public manager: MongoEntityManager
+  public io: Server
+  public roomId: string
 
-    public manager: MongoEntityManager
+  get state() {
+    return (async () => {
+      return await this.manager.findOne(GameRoom, this.roomId)
+    })()
+  }
 
-    public io: Server
-    public hostId: string
-    public players: User[]
-    public roomId: string
-    public game: Game
-    public hasStarted: boolean = false
+  setState = async (value: GameRoom) => {
+    const newState = await value
+    if (await this.state) {
+      await this.manager.update<GameRoom>(GameRoom, this.roomId, newState)
+    } else {
+      const res = await this.manager.save<GameRoom>(newState)
+      this.roomId = res.roomId.toString()
+      console.log('created Game')
+    }
+  }
 
-    get gameState(): GameRoom {
-        const room = new GameRoom()
-        room.roomId = ObjectID(this.roomId)
-        room.players = this.players
-        room.game = this.game
-        room.hasStarted = this.hasStarted
-        room.hostId = this.hostId
-        return room
+  constructor(io: Server) {
+    this.manager = getMongoManager('mongodb')
+    this.io = io
+    this.roomId = ObjectID()
+  }
+
+  init = async () => {
+    const newRoom = new GameRoom()
+    newRoom.players = []
+    newRoom.hasStarted = false
+    newRoom.roomId = ObjectID(this.roomId)
+
+    await this.setState(newRoom)
+  }
+
+  addPlayer = async (socket: Socket) => {
+    const prevState = await this.state
+
+    socket.join(this.roomId)
+    const user = this.decodeToken(socket)
+
+    const existingPlayer = prevState.players.find(p => p.uid == user.uid)
+
+    const newUser = new User()
+    newUser.id = ObjectID()
+    newUser.displayName = user.name ? user.name : 'Guest'
+    newUser.uid = user.uid
+
+    if (!existingPlayer) {
+      prevState.players.push(newUser)
     }
 
-    constructor(io: Server) {
-        this.manager = getMongoManager('mongodb')
-        this.io = io
-        this.roomId = ObjectID()
-
-        this.players = []
+    if (!prevState.hostId) {
+      prevState.hostId = user.uid
     }
 
-    addPlayer = async (socket: Socket) => {
-        socket.join(this.roomId)
-        const user = this.decodeToken(socket)
-        const existingPlayer = this.players.find(p => p.uid == user.uid)
+    await this.setState(prevState)
+  }
 
-        const newUser = new User()
-        newUser.id = ObjectID()
-        newUser.displayName = user.name ? user.name : 'Guest'
-        newUser.uid = user.uid
-        if (!existingPlayer) {
-            this.players.push(newUser)
-        }
+  removePlayer = async (socket: Socket) => {
+    const prevState = await this.state
+    const user = this.decodeToken(socket)
+    socket.leave(this.roomId)
+    const newPlayers = prevState.players.filter(p => {
+      return p.uid != user.uid
+    })
+    prevState.players = newPlayers
 
-        if (!this.hostId) {
-            this.hostId = user.uid
-        }
-
-        await this.saveGameState()
-
+    if (user.uid == prevState.hostId && prevState.players.length > 0) {
+      prevState.hostId = prevState.players[0].uid
     }
 
-    removePlayer = async (socket: Socket) => {
-        const user = this.decodeToken(socket)
-        socket.leave(this.roomId)
-        const newPlayers = this.players.filter((p) => { return p.uid != user.uid })
-        this.players = newPlayers;
+    await this.setState(prevState)
 
-        if (user.uid == this.hostId && this.players.length > 0) {
-            this.hostId = this.players[0].uid
-        }
+  }
 
-        await this.saveGameState()
-
-    }
-
-    saveGameState = async () => {
-        const room: GameRoom | undefined = await this.manager.findOne(GameRoom, this.roomId)
-        if (room) {
-            await this.manager.update<GameRoom>(GameRoom, this.roomId, this.gameState)
-            console.log('saved game');
-        } else {
-            const res = await this.manager.save<GameRoom>(this.gameState)
-            this.roomId = res.roomId.toString()
-            console.log('created game');
-        }
-    }
-
-
-    decodeToken = (socket: Socket): DecodedIdToken => {
-        return (socket.request as any).currentUser as DecodedIdToken
-    }
+  decodeToken = (socket: Socket): DecodedIdToken => {
+    return (socket.request as any).currentUser as DecodedIdToken
+  }
 }
