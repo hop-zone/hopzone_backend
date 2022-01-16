@@ -85,13 +85,7 @@ export class ServerController {
     const lobby = this.gameControllers.find(controller => {
       return controller.roomId == roomId
     })
-
-    console.log('Lobbies: ', this.gameControllers);
-    console.log(roomId);
     
-    
-    
-
     if (lobby) {
       await lobby.addPlayer(socket)
 
@@ -101,6 +95,9 @@ export class ServerController {
   }
 
   onLeaveLobby = async (socket: Socket, roomId: string) => {
+
+    console.log("leaving...");
+    
     const lobby = this.gameControllers.find(controller => {
       return controller.roomId == roomId
     })
@@ -111,8 +108,6 @@ export class ServerController {
         const i = this.gameControllers.indexOf(lobby)
         this.gameControllers.splice(i, 1)
         const roomToDelete = await this.manager.findOne(GameRoom, lobby.roomId)
-        console.log(roomToDelete)
-
         if (roomToDelete) await this.manager.deleteOne(GameRoom, roomToDelete)
       }
       this.io.emit('b2f_gamerooms', await this.getRooms())
