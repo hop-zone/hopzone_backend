@@ -133,9 +133,9 @@ export class GameController {
   handleWorkerMessage = async (message: WorkerMessage) => {
 
     if (message.message == WorkerMessages.setGameState) {
-      await this.manager.update<GameRoom>(GameRoom, this.roomId, { game: message.value })
-      console.log("updated game state");
-      
+
+      await this.manager.update<GameRoom>(GameRoom, this.roomId, {hasStarted: true, game: message.value })
+      this.io.to(this.roomId).emit('b2f_gameState', await this.state)
     }
 
   }

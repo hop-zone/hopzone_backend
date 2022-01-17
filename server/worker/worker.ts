@@ -22,18 +22,12 @@ const gravity = (state: Game) => {
 }
 
 const collide = (state: Game) => {
-
     const updatedState = state
     updatedState.players = updatedState.players.map((player) => {
         const updatedPlayer = new PlayerObject(player.x, player.y, player.uid, player.displayName)
         updatedPlayer.ySpeed = player.ySpeed
-
-        console.log(updatedPlayer);
-        
         let collided = false
-        
         state.platforms.map((platform) => {
-
             const platformObject = new Platform(platform.x, platform.y)
             if (updatedPlayer.intersects(platformObject) && updatedPlayer.ySpeed > 0) {
                 collided = true
@@ -52,8 +46,8 @@ const collide = (state: Game) => {
 
 const createGame = () => {
     const level = generateLevel()
-    const players = workerData.players.map((p) => {
-        const playerObject = new PlayerObject(0, 0, p.id, p.displayName)
+    const players = workerData.players.map((p, i) => {
+        const playerObject = new PlayerObject(i* 50, 0, p.id, p.displayName)
         return playerObject
     })
 
