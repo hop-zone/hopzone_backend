@@ -47,7 +47,7 @@ const collide = (state: Game) => {
 const createGame = () => {
     const level = generateLevel()
     const players = workerData.players.map((p, i) => {
-        const playerObject = new PlayerObject(i* 50, 0, p.id, p.displayName)
+        const playerObject = new PlayerObject(i * 100, -400, p.id, p.displayName)
         return playerObject
     })
 
@@ -68,9 +68,43 @@ const runService = (manager: MongoEntityManager) => {
         const message: WorkerMessage = { message: WorkerMessages.setGameState, value: JSON.stringify(oldState) }
         parentPort.postMessage(message)
 
-    }, 100)
+    }, 16)
+
+    parentPort.on('message', (message: WorkerMessage) => {
+        handleParentMessage(message, manager)
+    })
 }
 
+const moveLeft = (state: Game, uid: string) => {
+    const updatedState = state
+
+    updatedState.players = state.players.map((p) => {
+        if (p.uid == uid) {
+            const updatedPlayer = p
+            updatedPlayer.xSpeed = -updatedPlayer.movementSpeed
+            updatedPlayer.displayName = "rewqticmuhwertsdmrglksdfgnmsldkjfhgxmsdklgxhmsdfklgxjhmsdklfgchmdsflkgvhmsdfk,jghmsdfkjgh,"
+            return updatedPlayer
+        }
+
+        return p
+    })
+
+
+    return updatedState
+}
+
+const handleParentMessage = async (message: WorkerMessage, manager: MongoEntityManager) => {
+    if (message.message == WorkerMessages.moveLeft) {
+        let oldState = JSON.parse((await manager.findOne<GameRoom>(GameRoom, workerData.lobbyId)).game)
+
+        oldState = moveLeft(oldState, message.value)
+
+        console.log(oldState.players);
+
+        const msg: WorkerMessage = { message: WorkerMessages.testGameState, value: JSON.stringify(oldState) }
+        parentPort.postMessage(msg)
+    }
+}
 
     ; (() => {
         const entitiesDir = __dirname.split('server/')[0] + '/server/entities/**/*{.ts,.js}'

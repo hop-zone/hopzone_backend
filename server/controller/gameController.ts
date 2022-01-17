@@ -9,11 +9,13 @@ import { dirname, resolve } from 'path/posix'
 import { toPromise } from '../utils/toPromise'
 import { Worker, workerData } from 'worker_threads'
 import { WorkerMessage, WorkerMessages } from '../interfaces/workerMessage'
+import { PlayerController } from './playerController'
 
 export class GameController {
   public manager: MongoEntityManager
   public io: Server
   public sockets: Socket[]
+  public playerControllers: PlayerController[]
   public roomId: string
 
   get state() {
@@ -125,6 +127,13 @@ export class GameController {
       }
     });
 
+    this.playerControllers = this.sockets.map((s) => {
+      const controller = new PlayerController(s, worker, this.roomId)
+      controller.enableListeners()
+      return controller
+
+    })
+
     worker.on('message', this.handleWorkerMessage)
     const startGameMessage: WorkerMessage = { message: WorkerMessages.gameState, value: (await this.state).game }
     worker.postMessage(startGameMessage)
@@ -133,8 +142,14 @@ export class GameController {
   handleWorkerMessage = async (message: WorkerMessage) => {
 
     if (message.message == WorkerMessages.setGameState) {
+      await this.manager.update<GameRoom>(GameRoom, this.roomId, { hasStarted: true, game: message.value })
+      this.io.to(this.roomId).emit('b2f_gameState', await this.state)
+    }
+    if (message.message == WorkerMessages.testGameState) {
 
-      await this.manager.update<GameRoom>(GameRoom, this.roomId, {hasStarted: true, game: message.value })
+      console.log(message.value);
+      
+      await this.manager.update<GameRoom>(GameRoom, this.roomId, { hasStarted: true, game: `${message.value}`})
       this.io.to(this.roomId).emit('b2f_gameState', await this.state)
     }
 

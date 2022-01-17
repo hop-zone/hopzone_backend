@@ -1,7 +1,10 @@
 export enum WorkerMessages{
     getGameState = 'getGameState',
     setGameState = 'setGameState',
-    gameState = 'gameState'
+    gameState = 'gameState',
+    moveLeft = 'moveLeft',
+
+    testGameState = 'testGameState'
 
 }
 
