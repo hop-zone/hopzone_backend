@@ -11,6 +11,7 @@ import { toPromise } from '../utils/toPromise'
 export class GameController {
   public manager: MongoEntityManager
   public io: Server
+  public sockets: Socket[]
   public roomId: string
 
   get state() {
@@ -34,6 +35,7 @@ export class GameController {
     this.manager = getMongoManager('mongodb')
     this.io = io
     this.roomId = ObjectID()
+    this.sockets = []
   }
 
   init = async () => {
@@ -66,6 +68,13 @@ export class GameController {
       prevState.hostId = user.uid
     }
 
+    if (!this.sockets.includes(socket)) {
+      this.sockets.push(socket)
+    }
+
+    console.log(this.sockets);
+    
+
     await this.setState(prevState)
   }
 
@@ -82,6 +91,11 @@ export class GameController {
       prevState.hostId = prevState.players[0].uid
     }
 
+    if (this.sockets.includes(socket)) {
+      const i = this.sockets.indexOf(socket)
+      this.sockets.splice(i, 1)
+    }
+    
     await this.setState(prevState)
 
   }
