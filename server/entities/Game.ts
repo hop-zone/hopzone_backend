@@ -6,7 +6,7 @@ import { PlayerObject } from "./gameobjects/PlayerObject";
 @Entity('Games')
 export class Game extends BaseEntity {
     @ObjectIdColumn()
-    id?: ObjectID
+    _id?: ObjectID
 
     @Column(type => PlayerObject)
     players: PlayerObject[]

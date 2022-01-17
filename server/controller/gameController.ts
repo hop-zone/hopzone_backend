@@ -5,8 +5,10 @@ import { ObjectID } from 'mongodb'
 import { Game } from '../entities/Game'
 import { GameRoom } from '../entities/GameRoom'
 import { User } from '../entities/User'
-import { resolve } from 'path/posix'
+import { dirname, resolve } from 'path/posix'
 import { toPromise } from '../utils/toPromise'
+import { Worker, workerData } from 'worker_threads'
+import { WorkerMessage, WorkerMessages } from '../interfaces/workerMessage'
 
 export class GameController {
   public manager: MongoEntityManager
@@ -36,13 +38,23 @@ export class GameController {
     this.io = io
     this.roomId = ObjectID()
     this.sockets = []
+
   }
 
   init = async () => {
     const newRoom = new GameRoom()
     newRoom.players = []
+
+    // const game = new Game()
+    // game._id = ObjectID()
+    // game.platforms = []
+    // game.players = []
+    // newRoom.game = game
+    newRoom.game = ''
     newRoom.hasStarted = false
     newRoom.roomId = ObjectID(this.roomId)
+
+    console.log(newRoom);
 
     await this.setState(newRoom)
   }
@@ -72,9 +84,6 @@ export class GameController {
       this.sockets.push(socket)
     }
 
-    console.log(this.sockets);
-    
-
     await this.setState(prevState)
   }
 
@@ -95,8 +104,39 @@ export class GameController {
       const i = this.sockets.indexOf(socket)
       this.sockets.splice(i, 1)
     }
-    
+
     await this.setState(prevState)
+
+  }
+
+  startGame = async () => {
+
+    console.log('starting game...');
+
+    const players = (await this.state).players.map((p) => {
+      return { id: p.uid, displayName: p.displayName }
+    })
+
+    const worker = new Worker('./server/worker/worker.js', {
+      workerData: {
+        path: './worker.ts',
+        lobbyId: this.roomId,
+        players: players
+      }
+    });
+
+    worker.on('message', this.handleWorkerMessage)
+    const startGameMessage: WorkerMessage = { message: WorkerMessages.gameState, value: (await this.state).game }
+    worker.postMessage(startGameMessage)
+  }
+
+  handleWorkerMessage = async (message: WorkerMessage) => {
+
+    if (message.message == WorkerMessages.setGameState) {
+      await this.manager.update<GameRoom>(GameRoom, this.roomId, { game: message.value })
+      console.log("updated game state");
+      
+    }
 
   }
 

@@ -11,8 +11,8 @@ export class GameRoom extends BaseEntity {
     @ObjectIdColumn()
     roomId?: ObjectID
 
-    @Column(type => Game)
-    game?: Game
+    @Column()
+    game?: string
 
     @Column()
     hostId?: string
