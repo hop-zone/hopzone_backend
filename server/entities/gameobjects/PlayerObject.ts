@@ -31,7 +31,14 @@ export class PlayerObject extends GameObject {
     @Column()
     movementSpeed?: number
 
-    constructor(xPos: number, yPos: number, uid: string, displayName: string) {
+    @Column()
+    highestPosition?: number
+
+    get deathBarrierYpos () {
+        return this.highestPosition + 1000
+    }
+
+    constructor(xPos: number, yPos: number, uid: string, displayName: string, highestPosition?: number) {
 
         super(xPos, yPos)
         this.maxSpeed = 15
@@ -40,6 +47,7 @@ export class PlayerObject extends GameObject {
         this.height = 50
         this.xSpeed = 0
         this.ySpeed = 0
+        this.highestPosition = highestPosition || 0
         this.uid = uid
         this.displayName = displayName
 

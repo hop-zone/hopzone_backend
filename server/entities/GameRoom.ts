@@ -20,8 +20,17 @@ export class GameRoom extends BaseEntity {
     @Column()
     hasStarted: boolean
 
+    @Column()
+    hasEnded: boolean
+
     @Column(type => User)
     players?: User[]
+
+    @Column(type => User)
+    alivePlayers?: User[]
+
+    @Column(type => User)
+    deadPlayers?: User[]
 
     @CreateDateColumn({ type: 'timestamp', nullable: true })
     createdAt?: Date

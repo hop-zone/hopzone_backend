@@ -1,7 +1,7 @@
 import { Platform } from "../../entities/gameobjects/Platform"
 
 
-const amountOfPlaforms = 100
+const amountOfPlaforms = 50
 
 export const generateLevel = (): Platform[] => {
     const platforms: Platform[] = []

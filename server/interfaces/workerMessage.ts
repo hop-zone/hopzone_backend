@@ -1,4 +1,5 @@
 import { Game } from "../entities/Game";
+import { GameRoom } from "../entities/GameRoom";
 
 export enum EPlayerMovements {
     left = 'left',
@@ -14,6 +15,7 @@ export enum WorkerMessages{
     moveRight = 'moveRight',
     stopMoving = 'stopMoving',
     move = 'move',
+    endGame = 'endGame',
     exit = 'exit',
     testGameState = 'testGameState'
 

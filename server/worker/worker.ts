@@ -21,10 +21,21 @@ const playerMovements: IPlayerMovement[] = []
 
 let runner;
 
+const kill = (state: Game, players: PlayerObject[]) => {
+    const updatedState = state
+
+    players.map((p) => {
+        const i = state.players.indexOf(p)
+        updatedState.players.splice(i, 1)
+    })
+    return updatedState
+}
 
 const gravity = (state: Game) => {
     const updatedState = state
-    updatedState.players.forEach((p) => {
+    const playersToKill: PlayerObject[] = []
+
+    updatedState.players.forEach((p, i) => {
         p.y += p.ySpeed
         p.ySpeed += p.gravity
 
@@ -37,14 +48,25 @@ const gravity = (state: Game) => {
         } else if (p.bottomRight.x > 2000 / 2) {
             p.x = xBeforeUpdate
         }
+
+        if (p.highestPosition > p.y) {
+            p.highestPosition = p.y
+        }
+
+        if (p.y > p.deathBarrierYpos) {
+            playersToKill.push(p)
+        }
     })
+
+
+    updatedState.players = kill(updatedState, playersToKill).players
     return updatedState
 }
 
 const collide = (state: Game) => {
     const updatedState = state
     updatedState.players = updatedState.players.map((player) => {
-        const updatedPlayer = new PlayerObject(player.x, player.y, player.uid, player.displayName)
+        const updatedPlayer = new PlayerObject(player.x, player.y, player.uid, player.displayName, player.highestPosition)
         updatedPlayer.ySpeed = player.ySpeed
         let collided = false
         state.platforms.map((platform) => {
@@ -121,7 +143,7 @@ const generatePlatforms = (oldState: Game) => {
     let copyOfPlatforms = [...state.platforms]
 
     if (highestPlayer < highestPlatform + 100) {
-        for (let i = 0; i < 4; i++) {
+        for (let i = 0; i < 2; i++) {
             const newPlatform: Platform = new Platform(
                 getRandomInt(-1000, 1000),
                 getRandomInt(highestPlatform, highestPlatform - 100),
@@ -160,26 +182,46 @@ const runService = async (manager: MongoEntityManager) => {
     await createGame()
 
     runner = setInterval(async () => {
-        let oldState = (await manager.findOne<GameRoom>(GameRoom, workerData.lobbyId)).game
+        try {
+            let oldState = (await manager.findOne<GameRoom>(GameRoom, workerData.lobbyId)).game
 
-        oldState = gravity(oldState)
-        oldState = collide(oldState)
-        playerMovements.map((p) => {
-            oldState = move(oldState, p.uid, p.movement)
-        })
+            if (oldState.players.length == 0) {
+                console.log('everyone dead, quitting...');
+                
+                const message: WorkerMessage = { message: WorkerMessages.endGame }
+                parentPort.postMessage(message)
+                stopService()
+            } else {
+                oldState = gravity(oldState)
+                oldState = collide(oldState)
+                playerMovements.map((p) => {
+                    oldState = move(oldState, p.uid, p.movement)
+                })
 
-        oldState = generatePlatforms(oldState)
+                oldState = generatePlatforms(oldState)
 
-        const message: WorkerMessage = { message: WorkerMessages.setGameState, state: oldState }
-        parentPort.postMessage(message)
-        console.log("still running!");
+                const message: WorkerMessage = { message: WorkerMessages.setGameState, state: oldState }
+                parentPort.postMessage(message)
+            }
 
+
+        } catch (e) {
+            console.log("something went wrong, exiting thread... ", e);
+            stopService()
+        }
 
     }, 16)
 
     parentPort.on('message', (message: WorkerMessage) => {
         handleParentMessage(message, manager)
     })
+}
+
+const stopService = () => {
+    if (runner) {
+        clearInterval(runner)
+    }
+    parentPort.close()
 }
 
 const handleParentMessage = async (message: WorkerMessage, manager: MongoEntityManager) => {
@@ -196,12 +238,7 @@ const handleParentMessage = async (message: WorkerMessage, manager: MongoEntityM
 
     if (message.message == WorkerMessages.exit) {
         console.log("stopping worker thread...");
-
-        if (runner) {
-            clearInterval(runner)
-        }
-        parentPort.close()
-
+        stopService()
     }
 }
     ; (() => {

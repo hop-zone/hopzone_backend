@@ -53,6 +53,7 @@ export class GameController {
     // game.players = []
     // newRoom.game = game
     newRoom.hasStarted = false
+    newRoom.hasEnded = false
     newRoom.roomId = ObjectID(this.roomId)
 
     console.log(newRoom);
@@ -141,12 +142,17 @@ export class GameController {
 
   handleWorkerMessage = async (message: WorkerMessage) => {
     if (message.message == WorkerMessages.setGameState) {  
-      await this.manager.update<GameRoom>(GameRoom, this.roomId, { hasStarted: true, game: { ...message.state, players: message.state.players } })
+      await this.manager.update<GameRoom>(GameRoom, this.roomId, {hasStarted: true, game: message.state})
       this.io.to(this.roomId).emit('b2f_gameState', await this.state)
     }
 
     if(message.message == WorkerMessages.exit){
       console.log("Workerthread exited.")
+    }
+
+    if(message.message == WorkerMessages.endGame){
+      await this.manager.update<GameRoom>(GameRoom, this.roomId, {hasStarted: false, hasEnded: true })
+      this.io.to(this.roomId).emit('b2f_gameState', await this.state)
     }
   }
 
