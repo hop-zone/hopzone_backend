@@ -19,6 +19,8 @@ interface IPlayerMovement {
 
 const playerMovements: IPlayerMovement[] = []
 
+let runner;
+
 
 const gravity = (state: Game) => {
     const updatedState = state
@@ -57,6 +59,32 @@ const collide = (state: Game) => {
         }
 
         return updatedPlayer
+    })
+
+    return updatedState
+}
+
+const move = (state: Game, uid: string, movement: EPlayerMovements) => {
+
+    const updatedState = state
+
+    updatedState.players = state.players.map((p) => {
+        if (p.uid == uid) {
+            const updatedPlayer = p
+            switch (movement) {
+                case EPlayerMovements.left:
+                    updatedPlayer.xSpeed = -updatedPlayer.movementSpeed
+                    break;
+                case EPlayerMovements.right:
+                    updatedPlayer.xSpeed = updatedPlayer.movementSpeed
+                    break;
+                case EPlayerMovements.stop:
+                    updatedPlayer.xSpeed = 0
+                    break;
+            }
+            return updatedPlayer
+        }
+        return p
     })
 
     return updatedState
@@ -131,7 +159,7 @@ const createGame = async () => {
 const runService = async (manager: MongoEntityManager) => {
     await createGame()
 
-    setInterval(async () => {
+    runner = setInterval(async () => {
         let oldState = (await manager.findOne<GameRoom>(GameRoom, workerData.lobbyId)).game
 
         oldState = gravity(oldState)
@@ -144,6 +172,8 @@ const runService = async (manager: MongoEntityManager) => {
 
         const message: WorkerMessage = { message: WorkerMessages.setGameState, state: oldState }
         parentPort.postMessage(message)
+        console.log("still running!");
+
 
     }, 16)
 
@@ -152,34 +182,7 @@ const runService = async (manager: MongoEntityManager) => {
     })
 }
 
-const move = (state: Game, uid: string, movement: EPlayerMovements) => {
-
-    const updatedState = state
-
-    updatedState.players = state.players.map((p) => {
-        if (p.uid == uid) {
-            const updatedPlayer = p
-            switch (movement) {
-                case EPlayerMovements.left:
-                    updatedPlayer.xSpeed = -updatedPlayer.movementSpeed
-                    break;
-                case EPlayerMovements.right:
-                    updatedPlayer.xSpeed = updatedPlayer.movementSpeed
-                    break;
-                case EPlayerMovements.stop:
-                    updatedPlayer.xSpeed = 0
-                    break;
-            }
-            return updatedPlayer
-        }
-        return p
-    })
-
-    return updatedState
-}
-
 const handleParentMessage = async (message: WorkerMessage, manager: MongoEntityManager) => {
-
     if (message.message == WorkerMessages.move) {
         const p = playerMovements.find((p) => { p.uid == message.playerId })
         if (p) {
@@ -190,8 +193,17 @@ const handleParentMessage = async (message: WorkerMessage, manager: MongoEntityM
             playerMovements.push({ uid: message.playerId, movement: message.movement })
         }
     }
-}
 
+    if (message.message == WorkerMessages.exit) {
+        console.log("stopping worker thread...");
+
+        if (runner) {
+            clearInterval(runner)
+        }
+        parentPort.close()
+
+    }
+}
     ; (() => {
         const entitiesDir = __dirname.split('server/')[0] + '/server/entities/**/*{.ts,.js}'
         const conn: MongoConnectionOptions = {
