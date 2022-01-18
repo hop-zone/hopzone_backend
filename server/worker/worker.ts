@@ -6,17 +6,11 @@ import { Game } from "../entities/Game";
 import { PlayerObject } from "../entities/gameobjects/PlayerObject";
 import { Platform } from "../entities/gameobjects/Platform";
 import { GameRoom } from "../entities/GameRoom";
-import { WorkerMessage, WorkerMessages } from "../interfaces/workerMessage";
+import { EPlayerMovements, WorkerMessage, WorkerMessages } from "../interfaces/workerMessage";
 import { generateLevel } from "./utils/generateLevel";
 import { ObjectID } from 'mongodb'
 import { getRandomInt } from "./utils/getRandomInt";
 
-
-enum EPlayerMovements {
-    left = 'left',
-    right = 'right',
-    stop = 'stop',
-}
 
 interface IPlayerMovement {
     uid: string
@@ -119,7 +113,7 @@ const generatePlatforms = (oldState: Game) => {
     return state
 }
 
-const createGame = async (repo: MongoRepository<GameRoom>) => {
+const createGame = async () => {
     const level = generateLevel()
     const players = workerData.players.map((p, i) => {
         const playerObject = new PlayerObject(i * 100, -400, p.id, p.displayName)
@@ -134,8 +128,8 @@ const createGame = async (repo: MongoRepository<GameRoom>) => {
 
 }
 
-const runService = async (manager: MongoEntityManager, repo: MongoRepository<GameRoom>) => {
-    await createGame(repo)
+const runService = async (manager: MongoEntityManager) => {
+    await createGame()
 
     setInterval(async () => {
         let oldState = (await manager.findOne<GameRoom>(GameRoom, workerData.lobbyId)).game
@@ -186,32 +180,14 @@ const move = (state: Game, uid: string, movement: EPlayerMovements) => {
 
 const handleParentMessage = async (message: WorkerMessage, manager: MongoEntityManager) => {
 
-    if (message.message == WorkerMessages.moveLeft) {
+    if (message.message == WorkerMessages.move) {
         const p = playerMovements.find((p) => { p.uid == message.playerId })
         if (p) {
             const index = playerMovements.indexOf(p)
-            p.movement == EPlayerMovements.left
+            p.movement = message.movement
             playerMovements[index] = p
         } else {
-            playerMovements.push({ uid: message.playerId, movement: EPlayerMovements.left })
-        }
-    } else if (message.message == WorkerMessages.moveRight) {
-        const p = playerMovements.find((p) => { p.uid == message.playerId })
-        if (p) {
-            const index = playerMovements.indexOf(p)
-            p.movement == EPlayerMovements.right
-            playerMovements[index] = p
-        } else {
-            playerMovements.push({ uid: message.playerId, movement: EPlayerMovements.right })
-        }
-    } else if (message.message == WorkerMessages.stopMoving) {
-        const p = playerMovements.find((p) => { p.uid == message.playerId })
-        if (p) {
-            const index = playerMovements.indexOf(p)
-            p.movement == EPlayerMovements.stop
-            playerMovements[index] = p
-        } else {
-            playerMovements.push({ uid: message.playerId, movement: EPlayerMovements.stop })
+            playerMovements.push({ uid: message.playerId, movement: message.movement })
         }
     }
 }
@@ -233,15 +209,7 @@ const handleParentMessage = async (message: WorkerMessage, manager: MongoEntityM
 
         createConnection(conn).then(async (connection) => {
             const manager = getMongoManager('mongodb')
-            const repo = connection.getMongoRepository(GameRoom)
-            const playerRepo = connection.getMongoRepository<PlayerObject>(PlayerObject)
-
-            const players = await playerRepo.find()
-
-            console.log('kheb de spelers')
-            console.log(players);
-
-            runService(manager, repo)
+            runService(manager)
         })
     })()
 

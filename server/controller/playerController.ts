@@ -4,7 +4,7 @@ import { getMongoManager, MongoEntityManager } from "typeorm"
 import { Worker } from "worker_threads"
 import { Game } from "../entities/Game"
 import { GameRoom } from "../entities/GameRoom"
-import { WorkerMessage, WorkerMessages } from "../interfaces/workerMessage"
+import { EPlayerMovements, WorkerMessage, WorkerMessages } from "../interfaces/workerMessage"
 
 export class PlayerController {
     public socket: Socket
@@ -28,17 +28,17 @@ export class PlayerController {
     }
 
     moveLeft = async () => {
-        const message: WorkerMessage = { message: WorkerMessages.moveLeft, playerId: this.uid }
+        const message: WorkerMessage = { message: WorkerMessages.move, playerId: this.uid, movement: EPlayerMovements.left }
         this.worker.postMessage(message)
     }
 
     moveRight = async () => {
-        const message: WorkerMessage = { message: WorkerMessages.moveRight, playerId: this.uid }
+        const message: WorkerMessage = { message: WorkerMessages.move, playerId: this.uid, movement: EPlayerMovements.right }
         this.worker.postMessage(message)
     }
 
     stopMoving = async () => {
-        const message: WorkerMessage = { message: WorkerMessages.stopMoving, playerId: this.uid }
+        const message: WorkerMessage = { message: WorkerMessages.move, playerId: this.uid, movement: EPlayerMovements.stop }
         this.worker.postMessage(message)
     }
 
