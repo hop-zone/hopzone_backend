@@ -9,6 +9,7 @@ import { GameRoom } from "../entities/GameRoom";
 import { WorkerMessage, WorkerMessages } from "../interfaces/workerMessage";
 import { generateLevel } from "./utils/generateLevel";
 import { ObjectID } from 'mongodb'
+import { getRandomInt } from "./utils/getRandomInt";
 
 
 enum EPlayerMovements {
@@ -30,7 +31,6 @@ const gravity = (state: Game) => {
     updatedState.players.forEach((p) => {
         p.y += p.ySpeed
         p.ySpeed += p.gravity
-
 
         const xBeforeUpdate = p.x
         p.x += p.xSpeed
@@ -68,6 +68,57 @@ const collide = (state: Game) => {
     return updatedState
 }
 
+const generatePlatforms = (oldState: Game) => {
+    const state = oldState
+
+    const highestPlayer = Math.min.apply(
+        Math,
+        state.players.map(function (o) {
+            return o.y
+        }),
+    )
+    const highestPlatform = Math.min.apply(
+        Math,
+        state.platforms.map(function (o) {
+            return o.y
+        }),
+    )
+    const lowestPlayer = Math.max.apply(
+        Math,
+        state.players.map(function (o) {
+            return o.y
+        }),
+    )
+    const lowestPlatform = Math.max.apply(
+        Math,
+        state.platforms.map(function (o) {
+            return o.y
+        }),
+    )
+
+    let copyOfPlatforms = [...state.platforms]
+
+    if (highestPlayer < highestPlatform + 100) {
+        for (let i = 0; i < 4; i++) {
+            const newPlatform: Platform = new Platform(
+                getRandomInt(-1000, 1000),
+                getRandomInt(highestPlatform, highestPlatform - 100),
+            )
+            copyOfPlatforms.push(newPlatform)
+        }
+    }
+
+    if (lowestPlayer < lowestPlatform - 1000) {
+        copyOfPlatforms = copyOfPlatforms.filter((p: Platform) => {
+            return p.y != lowestPlatform
+        })
+    }
+
+    state.platforms = copyOfPlatforms
+
+    return state
+}
+
 const createGame = async (repo: MongoRepository<GameRoom>) => {
     const level = generateLevel()
     const players = workerData.players.map((p, i) => {
@@ -94,6 +145,8 @@ const runService = async (manager: MongoEntityManager, repo: MongoRepository<Gam
         playerMovements.map((p) => {
             oldState = move(oldState, p.uid, p.movement)
         })
+
+        oldState = generatePlatforms(oldState)
 
         const message: WorkerMessage = { message: WorkerMessages.setGameState, state: oldState }
         parentPort.postMessage(message)
