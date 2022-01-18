@@ -1,9 +1,12 @@
+import { Game } from "../entities/Game";
+
 export enum WorkerMessages{
     getGameState = 'getGameState',
     setGameState = 'setGameState',
     gameState = 'gameState',
     moveLeft = 'moveLeft',
-
+    moveRight = 'moveRight',
+    stopMoving = 'stopMoving',
     testGameState = 'testGameState'
 
 }
@@ -11,5 +14,6 @@ export enum WorkerMessages{
 
 export interface WorkerMessage {
     message: WorkerMessages
-    value: string
+    state?: Game
+    playerId?: string
 }

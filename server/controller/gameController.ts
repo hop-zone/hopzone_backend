@@ -52,7 +52,6 @@ export class GameController {
     // game.platforms = []
     // game.players = []
     // newRoom.game = game
-    newRoom.game = ''
     newRoom.hasStarted = false
     newRoom.roomId = ObjectID(this.roomId)
 
@@ -135,22 +134,22 @@ export class GameController {
     })
 
     worker.on('message', this.handleWorkerMessage)
-    const startGameMessage: WorkerMessage = { message: WorkerMessages.gameState, value: (await this.state).game }
+    const startGameMessage: WorkerMessage = { message: WorkerMessages.gameState, state: (await this.state).game }
     worker.postMessage(startGameMessage)
   }
 
   handleWorkerMessage = async (message: WorkerMessage) => {
 
     if (message.message == WorkerMessages.setGameState) {
-      await this.manager.update<GameRoom>(GameRoom, this.roomId, { hasStarted: true, game: message.value })
+      
+      await this.manager.update<GameRoom>(GameRoom, this.roomId, { hasStarted: true, game: { ...message.state, players: message.state.players } })
       this.io.to(this.roomId).emit('b2f_gameState', await this.state)
     }
-    if (message.message == WorkerMessages.testGameState) {
 
-      console.log(message.value);
+    if(message.message ==WorkerMessages.testGameState){
+      console.log(message.state.players);
       
-      await this.manager.update<GameRoom>(GameRoom, this.roomId, { hasStarted: true, game: `${message.value}`})
-      this.io.to(this.roomId).emit('b2f_gameState', await this.state)
+      await this.manager.update<GameRoom>(GameRoom, this.roomId, { hasStarted: true, game: { ...message.state, players: message.state.players } })
     }
 
   }

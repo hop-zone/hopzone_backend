@@ -5,6 +5,8 @@ import { GameObject } from "./GameObject";
 @Entity('PlayerObjects')
 export class PlayerObject extends GameObject {
 
+
+
     @Column()
     uid?: string
 
@@ -30,8 +32,8 @@ export class PlayerObject extends GameObject {
     movementSpeed?: number
 
     constructor(xPos: number, yPos: number, uid: string, displayName: string) {
+
         super(xPos, yPos)
-        
         this.maxSpeed = 15
         this.movementSpeed = 10
         this.width = 50

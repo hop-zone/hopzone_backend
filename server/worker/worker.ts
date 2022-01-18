@@ -1,5 +1,5 @@
 
-import { createConnection, getMongoManager, MongoEntityManager } from "typeorm";
+import { createConnection, getMongoManager, MongoEntityManager, MongoRepository } from "typeorm";
 import { MongoConnectionOptions } from "typeorm/driver/mongodb/MongoConnectionOptions";
 import { parentPort, workerData } from "worker_threads";
 import { Game } from "../entities/Game";
@@ -8,8 +8,21 @@ import { Platform } from "../entities/gameobjects/Platform";
 import { GameRoom } from "../entities/GameRoom";
 import { WorkerMessage, WorkerMessages } from "../interfaces/workerMessage";
 import { generateLevel } from "./utils/generateLevel";
+import { ObjectID } from 'mongodb'
 
 
+enum EPlayerMovements {
+    left = 'left',
+    right = 'right',
+    stop = 'stop',
+}
+
+interface IPlayerMovement {
+    uid: string
+    movement: EPlayerMovements
+}
+
+const playerMovements: IPlayerMovement[] = []
 
 
 const gravity = (state: Game) => {
@@ -17,6 +30,17 @@ const gravity = (state: Game) => {
     updatedState.players.forEach((p) => {
         p.y += p.ySpeed
         p.ySpeed += p.gravity
+
+
+        const xBeforeUpdate = p.x
+        p.x += p.xSpeed
+
+        //constrain player to world bounds
+        if (p.topLeft.x < -2000 / 2) {
+            p.x = xBeforeUpdate
+        } else if (p.bottomRight.x > 2000 / 2) {
+            p.x = xBeforeUpdate
+        }
     })
     return updatedState
 }
@@ -44,28 +68,34 @@ const collide = (state: Game) => {
     return updatedState
 }
 
-const createGame = () => {
+const createGame = async (repo: MongoRepository<GameRoom>) => {
     const level = generateLevel()
     const players = workerData.players.map((p, i) => {
         const playerObject = new PlayerObject(i * 100, -400, p.id, p.displayName)
         return playerObject
     })
 
-    const game = { players: players, platforms: level }
-    const message: WorkerMessage = { message: WorkerMessages.setGameState, value: JSON.stringify(game) }
+    const game = new Game()
+    game.players = players
+    game.platforms = level
+    const message: WorkerMessage = { message: WorkerMessages.setGameState, state: game }
     parentPort.postMessage(message)
+
 }
 
-const runService = (manager: MongoEntityManager) => {
-    createGame()
+const runService = async (manager: MongoEntityManager, repo: MongoRepository<GameRoom>) => {
+    await createGame(repo)
 
     setInterval(async () => {
-        let oldState = JSON.parse((await manager.findOne<GameRoom>(GameRoom, workerData.lobbyId)).game)
+        let oldState = (await manager.findOne<GameRoom>(GameRoom, workerData.lobbyId)).game
 
         oldState = gravity(oldState)
         oldState = collide(oldState)
+        playerMovements.map((p) => {
+            oldState = move(oldState, p.uid, p.movement)
+        })
 
-        const message: WorkerMessage = { message: WorkerMessages.setGameState, value: JSON.stringify(oldState) }
+        const message: WorkerMessage = { message: WorkerMessages.setGameState, state: oldState }
         parentPort.postMessage(message)
 
     }, 16)
@@ -75,34 +105,61 @@ const runService = (manager: MongoEntityManager) => {
     })
 }
 
-const moveLeft = (state: Game, uid: string) => {
+const move = (state: Game, uid: string, movement: EPlayerMovements) => {
+
     const updatedState = state
 
     updatedState.players = state.players.map((p) => {
         if (p.uid == uid) {
             const updatedPlayer = p
-            updatedPlayer.xSpeed = -updatedPlayer.movementSpeed
-            updatedPlayer.displayName = "rewqticmuhwertsdmrglksdfgnmsldkjfhgxmsdklgxhmsdfklgxjhmsdklfgchmdsflkgvhmsdfk,jghmsdfkjgh,"
+            switch (movement) {
+                case EPlayerMovements.left:
+                    updatedPlayer.xSpeed = -updatedPlayer.movementSpeed
+                    break;
+                case EPlayerMovements.right:
+                    updatedPlayer.xSpeed = updatedPlayer.movementSpeed
+                    break;
+                case EPlayerMovements.stop:
+                    updatedPlayer.xSpeed = 0
+                    break;
+            }
             return updatedPlayer
         }
-
         return p
     })
-
 
     return updatedState
 }
 
 const handleParentMessage = async (message: WorkerMessage, manager: MongoEntityManager) => {
+
     if (message.message == WorkerMessages.moveLeft) {
-        let oldState = JSON.parse((await manager.findOne<GameRoom>(GameRoom, workerData.lobbyId)).game)
-
-        oldState = moveLeft(oldState, message.value)
-
-        console.log(oldState.players);
-
-        const msg: WorkerMessage = { message: WorkerMessages.testGameState, value: JSON.stringify(oldState) }
-        parentPort.postMessage(msg)
+        const p = playerMovements.find((p) => { p.uid == message.playerId })
+        if (p) {
+            const index = playerMovements.indexOf(p)
+            p.movement == EPlayerMovements.left
+            playerMovements[index] = p
+        } else {
+            playerMovements.push({ uid: message.playerId, movement: EPlayerMovements.left })
+        }
+    } else if (message.message == WorkerMessages.moveRight) {
+        const p = playerMovements.find((p) => { p.uid == message.playerId })
+        if (p) {
+            const index = playerMovements.indexOf(p)
+            p.movement == EPlayerMovements.right
+            playerMovements[index] = p
+        } else {
+            playerMovements.push({ uid: message.playerId, movement: EPlayerMovements.right })
+        }
+    } else if (message.message == WorkerMessages.stopMoving) {
+        const p = playerMovements.find((p) => { p.uid == message.playerId })
+        if (p) {
+            const index = playerMovements.indexOf(p)
+            p.movement == EPlayerMovements.stop
+            playerMovements[index] = p
+        } else {
+            playerMovements.push({ uid: message.playerId, movement: EPlayerMovements.stop })
+        }
     }
 }
 
@@ -123,7 +180,15 @@ const handleParentMessage = async (message: WorkerMessage, manager: MongoEntityM
 
         createConnection(conn).then(async (connection) => {
             const manager = getMongoManager('mongodb')
-            runService(manager)
+            const repo = connection.getMongoRepository(GameRoom)
+            const playerRepo = connection.getMongoRepository<PlayerObject>(PlayerObject)
+
+            const players = await playerRepo.find()
+
+            console.log('kheb de spelers')
+            console.log(players);
+
+            runService(manager, repo)
         })
     })()
 

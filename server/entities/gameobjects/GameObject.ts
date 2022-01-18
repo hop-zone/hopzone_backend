@@ -1,5 +1,5 @@
-import { BaseEntity, Column, ObjectID, ObjectIdColumn } from "typeorm";
-
+import { BaseEntity, Column, ObjectIdColumn, PrimaryColumn } from "typeorm";
+import { ObjectID } from 'mongodb'
 
 interface Point {
     x: number,
@@ -9,7 +9,7 @@ interface Point {
 export class GameObject extends BaseEntity {
 
     @ObjectIdColumn()
-    id?: ObjectID
+    id?: string
 
     @Column()
     x?: number
@@ -48,7 +48,6 @@ export class GameObject extends BaseEntity {
         super()
         this.x = xPos
         this.y = yPos
-        // this.id = new ObjectID('werxwer')
 
         this.color = Math.random() * 255
     }

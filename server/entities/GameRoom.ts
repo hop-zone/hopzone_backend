@@ -1,5 +1,5 @@
 import { DecodedIdToken } from "firebase-admin/lib/auth/token-verifier";
-import { BaseEntity, Column, CreateDateColumn, Entity, ObjectID, ObjectIdColumn } from "typeorm";
+import { BaseEntity, Column, CreateDateColumn, Entity, ObjectID, ObjectIdColumn, UpdateDateColumn } from "typeorm";
 import { Game } from "./Game";
 import { User } from "./User";
 
@@ -11,8 +11,8 @@ export class GameRoom extends BaseEntity {
     @ObjectIdColumn()
     roomId?: ObjectID
 
-    @Column()
-    game?: string
+    @Column(type => Game)
+    game?: Game
 
     @Column()
     hostId?: string
@@ -25,4 +25,7 @@ export class GameRoom extends BaseEntity {
 
     @CreateDateColumn({ type: 'timestamp', nullable: true })
     createdAt?: Date
+
+    @UpdateDateColumn({ type: 'timestamp', nullable: true })
+    updatedAt?: Date
 }

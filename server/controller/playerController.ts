@@ -23,29 +23,23 @@ export class PlayerController {
 
     enableListeners = () => {
         this.socket.on('f2b_moveLeft', this.moveLeft)
-        this.socket.on('f2b_moveRight', () => {
-            console.log('move right');
-
-        })
-        this.socket.on('f2b_stopMoving', () => {
-            console.log('stop moving');
-
-        })
+        this.socket.on('f2b_moveRight', this.moveRight)
+        this.socket.on('f2b_stopMoving', this.stopMoving)
     }
 
     moveLeft = async () => {
-        
-        const message: WorkerMessage = {message: WorkerMessages.moveLeft, value: this.uid}
+        const message: WorkerMessage = { message: WorkerMessages.moveLeft, playerId: this.uid }
         this.worker.postMessage(message)
-
     }
 
     moveRight = async () => {
-
+        const message: WorkerMessage = { message: WorkerMessages.moveRight, playerId: this.uid }
+        this.worker.postMessage(message)
     }
 
     stopMoving = async () => {
-
+        const message: WorkerMessage = { message: WorkerMessages.stopMoving, playerId: this.uid }
+        this.worker.postMessage(message)
     }
 
     decodeToken = (socket: Socket): DecodedIdToken => {
