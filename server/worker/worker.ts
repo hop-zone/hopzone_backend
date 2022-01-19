@@ -27,7 +27,14 @@ const kill = (state: Game, players: PlayerObject[]) => {
     players.map((p) => {
         const i = state.players.indexOf(p)
         updatedState.players.splice(i, 1)
+
+        const deadplayer = state.deadPlayers.find((dead) => {return p.uid == dead.uid})
+
+        if(!deadplayer){
+            updatedState.deadPlayers.push(p)
+        }
     })
+
     return updatedState
 }
 
@@ -66,7 +73,7 @@ const gravity = (state: Game) => {
 const collide = (state: Game) => {
     const updatedState = state
     updatedState.players = updatedState.players.map((player) => {
-        const updatedPlayer = new PlayerObject(player.x, player.y, player.uid, player.displayName, player.highestPosition)
+        const updatedPlayer = new PlayerObject(player.x, player.y, player.uid, player.playerNum, player.displayName, player.highestPosition)
         updatedPlayer.ySpeed = player.ySpeed
         let collided = false
         state.platforms.map((platform) => {
@@ -167,12 +174,13 @@ const generatePlatforms = (oldState: Game) => {
 const createGame = async () => {
     const level = generateLevel()
     const players = workerData.players.map((p, i) => {
-        const playerObject = new PlayerObject(i * 100, -400, p.id, p.displayName)
+        const playerObject = new PlayerObject(i * 100, -400, p.id, i, p.displayName)
         return playerObject
     })
 
     const game = new Game()
     game.players = players
+    game.deadPlayers = []
     game.platforms = level
     const message: WorkerMessage = { message: WorkerMessages.setGameState, state: game }
     parentPort.postMessage(message)

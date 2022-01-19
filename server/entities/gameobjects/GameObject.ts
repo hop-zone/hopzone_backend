@@ -24,7 +24,7 @@ export class GameObject extends BaseEntity {
     height?: number = 1
 
     @Column()
-    gravity?: number = 0.4
+    gravity?: number = 0.5
 
     @Column()
     color?: number
