@@ -44,7 +44,7 @@ export class PlayerObject extends GameObject {
         this.maxSpeed = 15
         this.movementSpeed = 10
         this.width = 50
-        this.height = 50
+        this.height = 90
         this.xSpeed = 0
         this.ySpeed = 0
         this.highestPosition = highestPosition || 0

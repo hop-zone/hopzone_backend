@@ -6,8 +6,17 @@ import { GameObject } from "./GameObject";
 export class Platform extends GameObject {
 
     @Column()
-    width: number = 100
+    width: number = 120
 
     @Column()
-    height: number = 10
+    height: number = 30
+
+    @Column()
+    platformType: number
+
+    constructor(xPos: number, yPos: number, platformType: number){
+        super(xPos, yPos)
+
+        this.platformType = platformType
+    }
 }

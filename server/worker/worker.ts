@@ -70,7 +70,7 @@ const collide = (state: Game) => {
         updatedPlayer.ySpeed = player.ySpeed
         let collided = false
         state.platforms.map((platform) => {
-            const platformObject = new Platform(platform.x, platform.y)
+            const platformObject = new Platform(platform.x, platform.y, platform.platformType)
             if (updatedPlayer.intersects(platformObject) && updatedPlayer.ySpeed > 0) {
                 collided = true
             }
@@ -147,6 +147,7 @@ const generatePlatforms = (oldState: Game) => {
             const newPlatform: Platform = new Platform(
                 getRandomInt(-1000, 1000),
                 getRandomInt(highestPlatform, highestPlatform - 100),
+                getRandomInt(0, 3)
             )
             copyOfPlatforms.push(newPlatform)
         }
@@ -187,7 +188,6 @@ const runService = async (manager: MongoEntityManager) => {
 
             if (oldState.players.length == 0) {
                 console.log('everyone dead, quitting...');
-                
                 const message: WorkerMessage = { message: WorkerMessages.endGame }
                 parentPort.postMessage(message)
                 stopService()
