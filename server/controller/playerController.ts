@@ -25,6 +25,7 @@ export class PlayerController {
         this.socket.on('f2b_moveLeft', this.moveLeft)
         this.socket.on('f2b_moveRight', this.moveRight)
         this.socket.on('f2b_stopMoving', this.stopMoving)
+        this.socket.on('f2b_leaveLobby', this.leaveGame)
     }
 
     moveLeft = async () => {
@@ -41,6 +42,11 @@ export class PlayerController {
         const message: WorkerMessage = { message: WorkerMessages.move, playerId: this.uid, movement: EPlayerMovements.stop }
         this.worker.postMessage(message)
     }
+
+    leaveGame = async () => {
+        const message: WorkerMessage = { message: WorkerMessages.leaveGame, playerId: this.uid}
+    };
+    
 
     decodeToken = (socket: Socket): DecodedIdToken => {
         return (socket.request as any).currentUser as DecodedIdToken

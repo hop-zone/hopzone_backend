@@ -20,6 +20,7 @@ interface IPlayerMovement {
 const playerMovements: IPlayerMovement[] = []
 
 let runner;
+let uidToRemove: string;
 
 const kill = (state: Game, players: PlayerObject[]) => {
     const updatedState = state
@@ -171,6 +172,22 @@ const generatePlatforms = (oldState: Game) => {
     return state
 }
 
+const leaveGame = (oldState: Game) => {
+  const updatedState = oldState
+
+  if(uidToRemove){
+      const playertoremove = updatedState.players.find((p) => {return p.uid == uidToRemove})
+
+      if(playertoremove){
+          const i = updatedState.players.indexOf(playertoremove)
+          updatedState.players.splice(i, 1)
+      }
+  }
+
+  return updatedState
+};
+
+
 const createGame = async () => {
     const level = generateLevel()
     const players = workerData.players.map((p, i) => {
@@ -200,6 +217,7 @@ const runService = async (manager: MongoEntityManager) => {
                 parentPort.postMessage(message)
                 stopService()
             } else {
+                oldState = leaveGame(oldState)
                 oldState = gravity(oldState)
                 oldState = collide(oldState)
                 playerMovements.map((p) => {
@@ -247,6 +265,10 @@ const handleParentMessage = async (message: WorkerMessage, manager: MongoEntityM
     if (message.message == WorkerMessages.exit) {
         console.log("stopping worker thread...");
         stopService()
+    }
+
+    if(message.message == WorkerMessages.leaveGame) {
+        uidToRemove = message.playerId
     }
 }
     ; (() => {

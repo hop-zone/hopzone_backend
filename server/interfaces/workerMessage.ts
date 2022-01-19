@@ -17,7 +17,8 @@ export enum WorkerMessages{
     move = 'move',
     endGame = 'endGame',
     exit = 'exit',
-    testGameState = 'testGameState'
+    testGameState = 'testGameState',
+    leaveGame = 'leaveGame'
 
 }
 

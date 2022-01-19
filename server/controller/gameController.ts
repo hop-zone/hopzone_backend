@@ -15,6 +15,7 @@ export class GameController {
   public manager: MongoEntityManager
   public io: Server
   public sockets: Socket[]
+  public worker: Worker
   public playerControllers: PlayerController[]
   public roomId: string
 
@@ -107,6 +108,17 @@ export class GameController {
       this.sockets.splice(i, 1)
     }
 
+    if(this.worker){
+      if(prevState.players.length == 0){
+        const message: WorkerMessage = {message: WorkerMessages.exit}
+        this.worker.postMessage(message)
+      } else {
+        const message: WorkerMessage = {message: WorkerMessages.leaveGame, playerId: user.uid}
+        this.worker.postMessage(message)
+      }
+      
+    }
+
     await this.setState(prevState)
 
   }
@@ -127,6 +139,8 @@ export class GameController {
       }
     });
 
+    this.worker = worker
+
     this.playerControllers = this.sockets.map((s) => {
       const controller = new PlayerController(s, worker, this.roomId)
       controller.enableListeners()
@@ -135,9 +149,6 @@ export class GameController {
     })
 
     worker.on('message', this.handleWorkerMessage)
-    // const startGameMessage: WorkerMessage = { message: WorkerMessages.gameState, state: (await this.state).game }
-    // worker.postMessage(startGameMessage)
-    // worker.postMessage({message: WorkerMessages.exit})
   }
 
   handleWorkerMessage = async (message: WorkerMessage) => {
