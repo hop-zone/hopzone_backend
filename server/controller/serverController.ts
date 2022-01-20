@@ -132,7 +132,7 @@ export class ServerController {
   }
 
   getRooms = async () => {
-    return  (await this.manager.find<GameRoom>(GameRoom)).filter((r) => {return r.players.length < 5})
+    return  (await this.manager.find<GameRoom>(GameRoom)).filter((r) => {return r.players.length < 4})
   }
 
   getRoom = async (roomId: string) => {
