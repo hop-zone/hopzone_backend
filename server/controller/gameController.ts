@@ -127,6 +127,8 @@ export class GameController {
 
     console.log('starting game...');
 
+    this.io.to(this.roomId).emit('b2f_gameLoading')
+
     const players = (await this.state).players.map((p) => {
       return { id: p.uid, displayName: p.displayName }
     })
