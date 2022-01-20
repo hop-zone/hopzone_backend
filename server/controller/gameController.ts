@@ -164,6 +164,7 @@ export class GameController {
     }
 
     if(message.message == WorkerMessages.endGame){
+      this.playerControllers = []
       await this.manager.update<GameRoom>(GameRoom, this.roomId, {hasStarted: false, hasEnded: true })
       this.io.to(this.roomId).emit('b2f_gameState', await this.state)
     }

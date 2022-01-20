@@ -284,8 +284,6 @@ const handleParentMessage = async (message: WorkerMessage, manager: MongoEntityM
             entities: [entitiesDir],
         }
 
-        console.log(__dirname);
-
         createConnection(conn).then(async (connection) => {
             const manager = getMongoManager('mongodb')
             runService(manager)
