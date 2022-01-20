@@ -5,13 +5,18 @@ import { ObjectID } from 'mongodb'
 import { Game } from '../entities/Game'
 import { GameRoom } from '../entities/GameRoom'
 import { User } from '../entities/User'
-import { resolve } from 'path/posix'
+import { dirname, resolve } from 'path/posix'
 import { toPromise } from '../utils/toPromise'
+import { Worker, workerData } from 'worker_threads'
+import { WorkerMessage, WorkerMessages } from '../interfaces/workerMessage'
+import { PlayerController } from './playerController'
 
 export class GameController {
   public manager: MongoEntityManager
   public io: Server
   public sockets: Socket[]
+  public worker: Worker
+  public playerControllers: PlayerController[]
   public roomId: string
 
   get state() {
@@ -36,13 +41,23 @@ export class GameController {
     this.io = io
     this.roomId = ObjectID()
     this.sockets = []
+
   }
 
   init = async () => {
     const newRoom = new GameRoom()
     newRoom.players = []
+
+    // const game = new Game()
+    // game._id = ObjectID()
+    // game.platforms = []
+    // game.players = []
+    // newRoom.game = game
     newRoom.hasStarted = false
+    newRoom.hasEnded = false
     newRoom.roomId = ObjectID(this.roomId)
+
+    console.log(newRoom);
 
     await this.setState(newRoom)
   }
@@ -72,9 +87,6 @@ export class GameController {
       this.sockets.push(socket)
     }
 
-    console.log(this.sockets);
-    
-
     await this.setState(prevState)
   }
 
@@ -95,9 +107,64 @@ export class GameController {
       const i = this.sockets.indexOf(socket)
       this.sockets.splice(i, 1)
     }
-    
+
+    if(this.worker){
+      if(prevState.players.length == 0){
+        const message: WorkerMessage = {message: WorkerMessages.exit}
+        this.worker.postMessage(message)
+      } else {
+        const message: WorkerMessage = {message: WorkerMessages.leaveGame, playerId: user.uid}
+        this.worker.postMessage(message)
+      }
+      
+    }
+
     await this.setState(prevState)
 
+  }
+
+  startGame = async () => {
+
+    console.log('starting game...');
+
+    const players = (await this.state).players.map((p) => {
+      return { id: p.uid, displayName: p.displayName }
+    })
+
+    const worker = new Worker('./server/worker/worker.js', {
+      workerData: {
+        path: './worker.ts',
+        lobbyId: this.roomId,
+        players: players
+      }
+    });
+
+    this.worker = worker
+
+    this.playerControllers = this.sockets.map((s) => {
+      const controller = new PlayerController(s, worker, this.roomId)
+      controller.enableListeners()
+      return controller
+
+    })
+
+    worker.on('message', this.handleWorkerMessage)
+  }
+
+  handleWorkerMessage = async (message: WorkerMessage) => {
+    if (message.message == WorkerMessages.setGameState) {  
+      await this.manager.update<GameRoom>(GameRoom, this.roomId, {hasStarted: true, game: message.state})
+      this.io.to(this.roomId).emit('b2f_gameState', await this.state)
+    }
+
+    if(message.message == WorkerMessages.exit){
+      console.log("Workerthread exited.")
+    }
+
+    if(message.message == WorkerMessages.endGame){
+      await this.manager.update<GameRoom>(GameRoom, this.roomId, {hasStarted: false, hasEnded: true })
+      this.io.to(this.roomId).emit('b2f_gameState', await this.state)
+    }
   }
 
   decodeToken = (socket: Socket): DecodedIdToken => {

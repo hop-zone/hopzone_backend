@@ -54,6 +54,11 @@ export class ServerController {
       this.onLeaveLobby(socket, lobbyId)
     })
 
+    socket.on('f2b_startGame', (lobbyId: string) => {
+
+      this.onStartGame(lobbyId)
+    })
+
     socket.on('disconnect', () => {
       this.onSocketDisconnect(socket)
     })
@@ -76,6 +81,7 @@ export class ServerController {
     const state = await newRoom.state
 
     socket.emit('b2f_lobby', state)
+    socket.emit('b2f_gameState', state)
 
     const activeRooms = await this.getRooms()
     this.io.emit('b2f_gamerooms', activeRooms)
@@ -85,11 +91,13 @@ export class ServerController {
     const lobby = this.gameControllers.find(controller => {
       return controller.roomId == roomId
     })
-    
+
     if (lobby) {
       await lobby.addPlayer(socket)
 
       this.io.to(roomId).emit('b2f_lobby', await lobby.state)
+      this.io.to(roomId).emit('b2f_gameState', await lobby.state)
+
       this.io.emit('b2f_gamerooms', await this.getRooms())
     }
   }
@@ -97,7 +105,7 @@ export class ServerController {
   onLeaveLobby = async (socket: Socket, roomId: string) => {
 
     console.log("leaving...");
-    
+
     const lobby = this.gameControllers.find(controller => {
       return controller.roomId == roomId
     })
@@ -112,6 +120,18 @@ export class ServerController {
       }
       this.io.emit('b2f_gamerooms', await this.getRooms())
       this.io.to(lobby.roomId).emit('b2f_lobby', await this.getRoom(roomId))
+      this.io.to(lobby.roomId).emit('b2f_gameState', await this.getRoom(roomId))
+    }
+  }
+
+  onStartGame = async (roomId: string) => {
+    const lobby = this.gameControllers.find(controller => {
+      return controller.roomId == roomId
+    })
+
+
+    if (lobby) {
+      lobby.startGame()
     }
   }
 
