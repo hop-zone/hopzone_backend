@@ -11,8 +11,11 @@ export class Game extends BaseEntity {
     @Column(type => PlayerObject)
     players: PlayerObject[]
 
-    @Column(type => PlayerObject)
-    deadPlayers: PlayerObject[]
+    @Column()
+    alivePlayers: number
+
+    @Column()
+    deadPlayers: number
     
     @Column()
     platforms: Platform[]

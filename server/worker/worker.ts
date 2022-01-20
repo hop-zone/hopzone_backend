@@ -27,14 +27,22 @@ const kill = (state: Game, players: PlayerObject[]) => {
 
     players.map((p) => {
         const i = state.players.indexOf(p)
-        updatedState.players.splice(i, 1)
+        updatedState.players[i].isDead = true
+    })
 
-        const deadplayer = state.deadPlayers.find((dead) => {return p.uid == dead.uid})
+    let deadCount = 0
+    let aliveCount = 0
 
-        if(!deadplayer){
-            updatedState.deadPlayers.push(p)
+    updatedState.players.map((p) => {
+        if (p.isDead) {
+            deadCount++
+        } else {
+            aliveCount++
         }
     })
+
+    updatedState.deadPlayers = deadCount
+    updatedState.alivePlayers = aliveCount
 
     return updatedState
 }
@@ -42,28 +50,31 @@ const kill = (state: Game, players: PlayerObject[]) => {
 const gravity = (state: Game) => {
     const updatedState = state
     const playersToKill: PlayerObject[] = []
+    updatedState.players = updatedState.players.map((p, i) => {
+        if (!p.isDead) {
+            p.y += p.ySpeed
+            p.ySpeed += p.gravity
 
-    updatedState.players.forEach((p, i) => {
-        p.y += p.ySpeed
-        p.ySpeed += p.gravity
+            const xBeforeUpdate = p.x
+            p.x += p.xSpeed
 
-        const xBeforeUpdate = p.x
-        p.x += p.xSpeed
+            //constrain player to world bounds
+            if (p.topLeft.x < -2000 / 2) {
+                p.x = xBeforeUpdate
+            } else if (p.bottomRight.x > 2000 / 2) {
+                p.x = xBeforeUpdate
+            }
 
-        //constrain player to world bounds
-        if (p.topLeft.x < -2000 / 2) {
-            p.x = xBeforeUpdate
-        } else if (p.bottomRight.x > 2000 / 2) {
-            p.x = xBeforeUpdate
+            if (p.highestPosition > p.y) {
+                p.highestPosition = p.y
+            }
+
+            if (p.y > p.deathBarrierYpos) {
+
+                playersToKill.push(p)
+            }
         }
-
-        if (p.highestPosition > p.y) {
-            p.highestPosition = p.y
-        }
-
-        if (p.y > p.deathBarrierYpos) {
-            playersToKill.push(p)
-        }
+        return p
     })
 
 
@@ -74,7 +85,7 @@ const gravity = (state: Game) => {
 const collide = (state: Game) => {
     const updatedState = state
     updatedState.players = updatedState.players.map((player) => {
-        const updatedPlayer = new PlayerObject(player.x, player.y, player.uid, player.playerNum, player.displayName, player.highestPosition)
+        const updatedPlayer = new PlayerObject(player.x, player.y, player.uid, player.playerNum, player.displayName, player.highestPosition, player.isDead)
         updatedPlayer.ySpeed = player.ySpeed
         let collided = false
         state.platforms.map((platform) => {
@@ -173,18 +184,18 @@ const generatePlatforms = (oldState: Game) => {
 }
 
 const leaveGame = (oldState: Game) => {
-  const updatedState = oldState
+    const updatedState = oldState
 
-  if(uidToRemove){
-      const playertoremove = updatedState.players.find((p) => {return p.uid == uidToRemove})
+    if (uidToRemove) {
+        const playertoremove = updatedState.players.find((p) => { return p.uid == uidToRemove })
 
-      if(playertoremove){
-          const i = updatedState.players.indexOf(playertoremove)
-          updatedState.players.splice(i, 1)
-      }
-  }
+        if (playertoremove) {
+            const i = updatedState.players.indexOf(playertoremove)
+            updatedState.players[i].isDead = true
+        }
+    }
 
-  return updatedState
+    return updatedState
 };
 
 
@@ -197,7 +208,8 @@ const createGame = async () => {
 
     const game = new Game()
     game.players = players
-    game.deadPlayers = []
+    game.alivePlayers = players.length
+    game.deadPlayers = 0
     game.platforms = level
     const message: WorkerMessage = { message: WorkerMessages.setGameState, state: game }
     parentPort.postMessage(message)
@@ -211,7 +223,7 @@ const runService = async (manager: MongoEntityManager) => {
         try {
             let oldState = (await manager.findOne<GameRoom>(GameRoom, workerData.lobbyId)).game
 
-            if (oldState.players.length == 0) {
+            if (oldState.alivePlayers == 0) {
                 console.log('everyone dead, quitting...');
                 const message: WorkerMessage = { message: WorkerMessages.endGame }
                 parentPort.postMessage(message)
@@ -267,7 +279,7 @@ const handleParentMessage = async (message: WorkerMessage, manager: MongoEntityM
         stopService()
     }
 
-    if(message.message == WorkerMessages.leaveGame) {
+    if (message.message == WorkerMessages.leaveGame) {
         uidToRemove = message.playerId
     }
 }
