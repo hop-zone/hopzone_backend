@@ -11,6 +11,7 @@ import { generateLevel } from "./utils/generateLevel";
 import { ObjectID } from 'mongodb'
 import { getRandomInt } from "./utils/getRandomInt";
 import { MovingPlatform } from "../entities/gameobjects/MovingPlatform";
+import { BoostedPlatform } from "../entities/gameobjects/BoostedPlatform";
 
 
 interface IPlayerMovement {
@@ -89,6 +90,7 @@ const collide = (state: Game) => {
         const updatedPlayer = new PlayerObject(player.x, player.y, player.uid, player.playerNum, player.displayName, player.highestPosition, player.isDead)
         updatedPlayer.ySpeed = player.ySpeed
         let collided = false
+        let boostedCollision = false;
         state.platforms.map((platform) => {
             const platformObject = new Platform(platform.x, platform.y, platform.platformType)
             if (updatedPlayer.intersects(platformObject) && updatedPlayer.ySpeed > 0) {
@@ -103,8 +105,19 @@ const collide = (state: Game) => {
             }
         })
 
+        state.boostedPlatforms.map((platform) => {
+            const platformObject = new BoostedPlatform(platform.x, platform.y)
+            if (updatedPlayer.intersects(platformObject) && updatedPlayer.ySpeed > 0) {
+                boostedCollision = true
+            }
+        })
+
         if (collided) {
             updatedPlayer.ySpeed = -updatedPlayer.maxSpeed
+        }
+
+        if (boostedCollision) {
+            updatedPlayer.ySpeed = -25
         }
 
         return updatedPlayer
@@ -167,6 +180,20 @@ const generatePlatforms = (oldState: Game) => {
             return o.y
         }),
     )
+
+    const highestMovingPlatform = Math.min.apply(
+        Math,
+        state.movingPlatforms.map(function (o) {
+            return o.y
+        }),
+    )
+
+    const highestBoostedPlatform = Math.min.apply(
+        Math,
+        state.boostedPlatforms.map(function (o) {
+            return o.y
+        }),
+    )
     const lowestPlayer = Math.max.apply(
         Math,
         state.players.map(function (o) {
@@ -180,17 +207,58 @@ const generatePlatforms = (oldState: Game) => {
         }),
     )
 
-    let copyOfPlatforms = [...state.platforms]
+    const lowestBoostedPlatform = Math.max.apply(
+        Math,
+        state.boostedPlatforms.map(function (o) {
+            return o.y
+        }),
+    )
 
-    if (highestPlayer < highestPlatform + 100) {
-        for (let i = 0; i < 2; i++) {
+    const lowestMovingPlatform = Math.max.apply(
+        Math,
+        state.movingPlatforms.map(function (o) {
+            return o.y
+        }),
+    )
+
+
+
+    let copyOfPlatforms = [...state.platforms]
+    let copyOfMovingPlatforms = [...state.movingPlatforms]
+    let copyOfBoostedPlatforms = [...state.boostedPlatforms]
+
+    if (highestPlayer < highestPlatform + 200) {
+        let highestPlatformObject = copyOfPlatforms.find((p) => { return p.y == highestPlatform })
+        const newPlatform: Platform = new Platform(
+            getRandomInt(highestPlatformObject.x - 500, highestPlatformObject.x + 300),
+            getRandomInt(highestPlatform, highestPlatform - 300),
+            getRandomInt(0, 3)
+        )
+
+        copyOfPlatforms.push(newPlatform)
+        for (let i = 0; i < 4; i++) {
+
             const newPlatform: Platform = new Platform(
                 getRandomInt(-1000, 1000),
-                getRandomInt(highestPlatform, highestPlatform - 100),
+                getRandomInt(highestPlatform, highestPlatform - 300),
                 getRandomInt(0, 3)
             )
+
+            if (newPlatform.x < -1000) newPlatform.x = getRandomInt(-1000, -500)
+            if (newPlatform.x > 1000) newPlatform.x = getRandomInt(500, 1000)
+            // highestPlatformObject = newPlatform
             copyOfPlatforms.push(newPlatform)
         }
+    }
+
+    if (highestPlayer < highestMovingPlatform + 100) {
+        const newPlatform: MovingPlatform = new MovingPlatform(getRandomInt(-1000, 1000), getRandomInt(highestMovingPlatform, highestMovingPlatform - 2000),)
+        copyOfMovingPlatforms.push(newPlatform)
+    }
+
+    if (highestPlayer < highestBoostedPlatform + 100) {
+        const newPlatform: BoostedPlatform = new BoostedPlatform(getRandomInt(-1000, 1000), getRandomInt(highestMovingPlatform, highestMovingPlatform - 2000),)
+        copyOfBoostedPlatforms.push(newPlatform)
     }
 
     if (lowestPlayer < lowestPlatform - 1000) {
@@ -199,7 +267,21 @@ const generatePlatforms = (oldState: Game) => {
         })
     }
 
+    if (lowestPlayer < lowestMovingPlatform - 1000) {
+        copyOfMovingPlatforms = copyOfMovingPlatforms.filter((p: MovingPlatform) => {
+            return p.y != lowestMovingPlatform
+        })
+    }
+
+    if (lowestPlayer < lowestBoostedPlatform - 1000) {
+        copyOfBoostedPlatforms = copyOfBoostedPlatforms.filter((p: BoostedPlatform) => {
+            return p.y != lowestMovingPlatform
+        })
+    }
+
     state.platforms = copyOfPlatforms
+    state.movingPlatforms = copyOfMovingPlatforms
+    state.boostedPlatforms = copyOfBoostedPlatforms
 
     return state
 }
@@ -222,16 +304,15 @@ const leaveGame = (oldState: Game) => {
 
 const createGame = async () => {
     const platforms = generateLevel()
+    // const platforms = []
     const players = workerData.players.map((p, i) => {
-        const playerObject = new PlayerObject(i * 100, -400, p.id, i, p.displayName)
+        const playerObject = new PlayerObject(i * 100, -50, p.id, i, p.displayName)
+        platforms.push(new Platform(playerObject.x, 0, getRandomInt(0, 3)))
         return playerObject
     })
 
-    const movingPlatforms = []
-
-    for (let i = 0; i < 20; i++) {
-        movingPlatforms.push(new MovingPlatform(getRandomInt(-1000, 1000), getRandomInt(0, -500)))
-    }
+    const movingPlatforms = [new MovingPlatform(getRandomInt(-1000, 1000), getRandomInt(0, -500))]
+    const boostedPlatforms = [new BoostedPlatform(getRandomInt(-1000, 1000), getRandomInt(0, -500))]
 
     const game = new Game()
     game.players = players
@@ -239,6 +320,7 @@ const createGame = async () => {
     game.deadPlayers = 0
     game.platforms = platforms
     game.movingPlatforms = movingPlatforms
+    game.boostedPlatforms = boostedPlatforms
     const message: WorkerMessage = { message: WorkerMessages.setGameState, state: game }
     parentPort.postMessage(message)
 

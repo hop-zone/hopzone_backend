@@ -5,9 +5,18 @@ const amountOfPlaforms = 50
 
 export const generateLevel = (): Platform[] => {
     const platforms: Platform[] = []
+    let prevPlatform: Platform = new Platform(-50000, 200, 0)
     for (let i = 0; i < amountOfPlaforms; i++) {
 
-        const platform = new Platform(getRandomInt(-1000, 1000), getRandomInt(0, -500), getRandomInt(0,3))
+        let platform = new Platform(getRandomInt(-1000, 1000), getRandomInt(-200, -1000), getRandomInt(0, 3))
+
+        while (platform.intersects(prevPlatform)) {
+            console.log('intersection!');
+            
+            platform = new Platform(getRandomInt(-1000, 1000), getRandomInt(-200, -1000), getRandomInt(0, 3))
+        }
+
+        prevPlatform = platform
         platforms.push(platform)
     }
 
