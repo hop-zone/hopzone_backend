@@ -51,7 +51,7 @@ export class PlayerController {
         this.socket.removeAllListeners('f2b_moveRight')
         this.socket.removeAllListeners('f2b_stopMoving')
         this.socket.removeAllListeners('f2b_moveLeft')
-        this.socket.removeAllListeners('f2b_leaveLobby')
+        this.socket.removeListener('f2b_leaveLobby', this.leaveGame)
     };
     
     

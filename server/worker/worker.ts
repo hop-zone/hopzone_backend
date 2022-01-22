@@ -10,6 +10,7 @@ import { EPlayerMovements, WorkerMessage, WorkerMessages } from "../interfaces/w
 import { generateLevel } from "./utils/generateLevel";
 import { ObjectID } from 'mongodb'
 import { getRandomInt } from "./utils/getRandomInt";
+import { MovingPlatform } from "../entities/gameobjects/MovingPlatform";
 
 
 interface IPlayerMovement {
@@ -95,6 +96,13 @@ const collide = (state: Game) => {
             }
         })
 
+        state.movingPlatforms.map((platform) => {
+            const platformObject = new MovingPlatform(platform.x, platform.y)
+            if (updatedPlayer.intersects(platformObject) && updatedPlayer.ySpeed > 0) {
+                collided = true
+            }
+        })
+
         if (collided) {
             updatedPlayer.ySpeed = -updatedPlayer.maxSpeed
         }
@@ -129,6 +137,19 @@ const move = (state: Game, uid: string, movement: EPlayerMovements) => {
     })
 
     return updatedState
+}
+
+const movePlatforms = (state: Game) => {
+    state.movingPlatforms = state.movingPlatforms.map((p) => {
+        p.x += p.xSpeed
+
+        if (Math.abs(p.originXpos - p.x) > p.movingRange) {
+            p.xSpeed = -p.xSpeed
+        }
+        return p
+    })
+
+    return state
 }
 
 const generatePlatforms = (oldState: Game) => {
@@ -200,17 +221,24 @@ const leaveGame = (oldState: Game) => {
 
 
 const createGame = async () => {
-    const level = generateLevel()
+    const platforms = generateLevel()
     const players = workerData.players.map((p, i) => {
         const playerObject = new PlayerObject(i * 100, -400, p.id, i, p.displayName)
         return playerObject
     })
 
+    const movingPlatforms = []
+
+    for (let i = 0; i < 20; i++) {
+        movingPlatforms.push(new MovingPlatform(getRandomInt(-1000, 1000), getRandomInt(0, -500)))
+    }
+
     const game = new Game()
     game.players = players
     game.alivePlayers = players.length
     game.deadPlayers = 0
-    game.platforms = level
+    game.platforms = platforms
+    game.movingPlatforms = movingPlatforms
     const message: WorkerMessage = { message: WorkerMessages.setGameState, state: game }
     parentPort.postMessage(message)
 
@@ -231,6 +259,7 @@ const runService = async (manager: MongoEntityManager) => {
             } else {
                 oldState = leaveGame(oldState)
                 oldState = gravity(oldState)
+                oldState = movePlatforms(oldState)
                 oldState = collide(oldState)
                 playerMovements.map((p) => {
                     oldState = move(oldState, p.uid, p.movement)

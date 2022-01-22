@@ -58,6 +58,12 @@ export class ServerController {
       this.onStartGame(lobbyId)
     })
 
+    socket.on('f2b_restartGame', (lobbyId: string) => {
+
+      this.onRestartGame(lobbyId)
+    }
+    )
+
     socket.on('disconnect', () => {
       this.onSocketDisconnect(socket)
     })
@@ -127,12 +133,26 @@ export class ServerController {
 
 
     if (lobby) {
-      lobby.startGame()
+      await lobby.startGame()
+      this.io.emit('b2f_gameRooms', await this.getRooms())
+    }
+  }
+
+  onRestartGame = async (roomId: string) => {
+    const lobby = this.gameControllers.find(controller => {
+      return controller.roomId == roomId
+    })
+
+    if (lobby) {
+
+      await lobby.restartGame()
+      
+      // this.io.emit('b2f_gamerooms', await this.getRooms())
     }
   }
 
   getRooms = async () => {
-    return  (await this.manager.find<GameRoom>(GameRoom)).filter((r) => {return r.players.length < 4})
+    return (await this.manager.find<GameRoom>(GameRoom)).filter((r) => { return r.players.length < 4 && r.hasEnded == false && r.hasStarted == false })
   }
 
   getRoom = async (roomId: string) => {

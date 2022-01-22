@@ -108,15 +108,15 @@ export class GameController {
       this.sockets.splice(i, 1)
     }
 
-    if(this.worker){
-      if(prevState.players.length == 0){
-        const message: WorkerMessage = {message: WorkerMessages.exit}
+    if (this.worker) {
+      if (prevState.players.length == 0) {
+        const message: WorkerMessage = { message: WorkerMessages.exit }
         this.worker.postMessage(message)
       } else {
-        const message: WorkerMessage = {message: WorkerMessages.leaveGame, playerId: user.uid}
+        const message: WorkerMessage = { message: WorkerMessages.leaveGame, playerId: user.uid }
         this.worker.postMessage(message)
       }
-      
+
     }
 
     await this.setState(prevState)
@@ -124,6 +124,7 @@ export class GameController {
   }
 
   startGame = async () => {
+
 
     console.log('starting game...');
 
@@ -151,24 +152,43 @@ export class GameController {
     })
 
     worker.on('message', this.handleWorkerMessage)
+
+    const rooms = (await this.manager.find<GameRoom>(GameRoom)).filter((r) => { return r.players.length < 4 && r.hasEnded == false && r.hasStarted == false && r.roomId.toString() != this.roomId })
+
+    console.log(rooms);
+
+    this.io.emit('b2f_gameRooms', rooms)
+
   }
 
+  restartGame = async () => {
+    await this.manager.update<GameRoom>(GameRoom, this.roomId, { hasStarted: false, hasEnded: false, game: undefined })
+
+    const state = await this.state
+
+    // console.log(state);
+
+
+    this.io.to(this.roomId).emit('b2f_gameState', state)
+  };
+
+
   handleWorkerMessage = async (message: WorkerMessage) => {
-    if (message.message == WorkerMessages.setGameState) {  
-      await this.manager.update<GameRoom>(GameRoom, this.roomId, {hasStarted: true, game: message.state})
+    if (message.message == WorkerMessages.setGameState) {
+      await this.manager.update<GameRoom>(GameRoom, this.roomId, { hasStarted: true, game: message.state })
       this.io.to(this.roomId).emit('b2f_gameState', await this.state)
     }
 
-    if(message.message == WorkerMessages.exit){
+    if (message.message == WorkerMessages.exit) {
       console.log("Workerthread exited.")
     }
 
-    if(message.message == WorkerMessages.endGame){
+    if (message.message == WorkerMessages.endGame) {
       this.playerControllers.map((c) => {
         c.disableListeners()
       })
       this.playerControllers = []
-      await this.manager.update<GameRoom>(GameRoom, this.roomId, {hasStarted: false, hasEnded: true })
+      await this.manager.update<GameRoom>(GameRoom, this.roomId, { hasStarted: false, hasEnded: true })
       this.io.to(this.roomId).emit('b2f_gameState', await this.state)
     }
   }
