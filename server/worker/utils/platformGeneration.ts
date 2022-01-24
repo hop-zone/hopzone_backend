@@ -20,19 +20,9 @@ export const generatePlatforms = (oldState: Game) => {
         }),
     )
 
-    const highestMovingPlatform = Math.min.apply(
-        Math,
-        state.movingPlatforms.map(function (o) {
-            return o.y
-        }),
-    )
 
-    const highestBoostedPlatform = Math.min.apply(
-        Math,
-        state.boostedPlatforms.map(function (o) {
-            return o.y
-        }),
-    )
+
+
     const lowestPlayer = Math.max.apply(
         Math,
         state.players.map(function (o) {
@@ -46,25 +36,13 @@ export const generatePlatforms = (oldState: Game) => {
         }),
     )
 
-    const lowestBoostedPlatform = Math.max.apply(
-        Math,
-        state.boostedPlatforms.map(function (o) {
-            return o.y
-        }),
-    )
 
-    const lowestMovingPlatform = Math.max.apply(
-        Math,
-        state.movingPlatforms.map(function (o) {
-            return o.y
-        }),
-    )
+
 
 
 
     let copyOfPlatforms = [...state.platforms]
-    let copyOfMovingPlatforms = [...state.movingPlatforms]
-    let copyOfBoostedPlatforms = [...state.boostedPlatforms]
+
 
     if (highestPlayer < highestPlatform + 200) {
         let highestPlatformObject = copyOfPlatforms.find((p) => { return p.y == highestPlatform })
@@ -86,20 +64,61 @@ export const generatePlatforms = (oldState: Game) => {
         }
     }
 
-    if (highestPlayer < highestMovingPlatform + 100) {
-        const newPlatform: MovingPlatform = new MovingPlatform(getRandomInt(-1000, 1000), getRandomInt(highestMovingPlatform, highestMovingPlatform - 2000),)
-        copyOfMovingPlatforms.push(newPlatform)
-    }
 
-    if (highestPlayer < highestBoostedPlatform + 100) {
-        const newPlatform: BoostedPlatform = new BoostedPlatform(getRandomInt(-1000, 1000), getRandomInt(highestMovingPlatform, highestMovingPlatform - 2000),)
-        copyOfBoostedPlatforms.push(newPlatform)
-    }
+
 
     if (lowestPlayer < lowestPlatform - 1000) {
         copyOfPlatforms = copyOfPlatforms.filter((p: Platform) => {
             return p.y != lowestPlatform
         })
+    }
+
+
+
+
+    state.platforms = copyOfPlatforms
+
+
+
+    return state
+}
+
+export const generateMovingPlatforms = (state: Game) => {
+    const highestPlayer = Math.min.apply(
+        Math,
+        state.players.map(function (o) {
+            return o.y
+        }),
+    )
+
+    const lowestPlayer = Math.max.apply(
+        Math,
+        state.players.map(function (o) {
+            return o.y
+        }),
+    )
+
+    const highestMovingPlatform = Math.min.apply(
+        Math,
+        state.movingPlatforms.map(function (o) {
+            return o.y
+        }),
+    )
+
+
+    const lowestMovingPlatform = Math.max.apply(
+        Math,
+        state.movingPlatforms.map(function (o) {
+            return o.y
+        }),
+    )
+
+    let copyOfMovingPlatforms = [...state.movingPlatforms]
+
+
+    if (highestPlayer < highestMovingPlatform + 100) {
+        const newPlatform: MovingPlatform = new MovingPlatform(getRandomInt(-1000, 1000), getRandomInt(highestMovingPlatform, highestMovingPlatform - 2000),)
+        copyOfMovingPlatforms.push(newPlatform)
     }
 
     if (lowestPlayer < lowestMovingPlatform - 1000) {
@@ -108,14 +127,53 @@ export const generatePlatforms = (oldState: Game) => {
         })
     }
 
+    state.movingPlatforms = copyOfMovingPlatforms
+
+    return state
+}
+
+export const generateBoostedPlatforms = (state: Game) => {
+    const highestPlayer = Math.min.apply(
+        Math,
+        state.players.map(function (o) {
+            return o.y
+        }),
+    )
+
+    const lowestPlayer = Math.max.apply(
+        Math,
+        state.players.map(function (o) {
+            return o.y
+        }),
+    )
+
+    const highestBoostedPlatform = Math.min.apply(
+        Math,
+        state.boostedPlatforms.map(function (o) {
+            return o.y
+        }),
+    )
+
+    const lowestBoostedPlatform = Math.max.apply(
+        Math,
+        state.boostedPlatforms.map(function (o) {
+            return o.y
+        }),
+    )
+
+    let copyOfBoostedPlatforms = [...state.boostedPlatforms]
+
+    if (highestPlayer < highestBoostedPlatform + 100) {
+        const newPlatform: BoostedPlatform = new BoostedPlatform(getRandomInt(-1000, 1000), getRandomInt(highestBoostedPlatform, highestBoostedPlatform - 2000),)
+        copyOfBoostedPlatforms.push(newPlatform)
+    }
+
     if (lowestPlayer < lowestBoostedPlatform - 1000) {
         copyOfBoostedPlatforms = copyOfBoostedPlatforms.filter((p: BoostedPlatform) => {
-            return p.y != lowestMovingPlatform
+            return p.y != lowestBoostedPlatform
         })
     }
 
-    state.platforms = copyOfPlatforms
-    state.movingPlatforms = copyOfMovingPlatforms
     state.boostedPlatforms = copyOfBoostedPlatforms
 
     return state

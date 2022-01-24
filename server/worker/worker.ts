@@ -12,10 +12,12 @@ import { ObjectID } from 'mongodb'
 import { getRandomInt } from "./utils/getRandomInt";
 import { MovingPlatform } from "../entities/gameobjects/MovingPlatform";
 import { BoostedPlatform } from "../entities/gameobjects/BoostedPlatform";
-import { generatePlatforms } from "./utils/platformGeneration";
+import { generateBoostedPlatforms, generateMovingPlatforms, generatePlatforms } from "./utils/platformGeneration";
 import { movePlatforms } from "./utils/platformMovement";
 import { collide } from "./utils/collision";
 import { gravity, move } from "./utils/playerMovement";
+import { Enemy } from "../entities/gameobjects/Enemy";
+import { moveEnemies } from "./utils/enemyMovement";
 
 
 interface IPlayerMovement {
@@ -55,6 +57,7 @@ const createGame = async () => {
 
     const movingPlatforms = [new MovingPlatform(getRandomInt(-1000, 1000), getRandomInt(0, -500))]
     const boostedPlatforms = [new BoostedPlatform(getRandomInt(-1000, 1000), getRandomInt(0, -500))]
+    const enemies = [new Enemy(getRandomInt(-1000, 1000), getRandomInt(0, -1000))]
 
     const game = new Game()
     game.players = players
@@ -63,6 +66,7 @@ const createGame = async () => {
     game.platforms = platforms
     game.movingPlatforms = movingPlatforms
     game.boostedPlatforms = boostedPlatforms
+    game.enemies = enemies
     const message: WorkerMessage = { message: WorkerMessages.setGameState, state: game }
     parentPort.postMessage(message)
 
@@ -84,12 +88,15 @@ const runService = async (manager: MongoEntityManager) => {
                 oldState = leaveGame(oldState)
                 oldState = gravity(oldState)
                 oldState = movePlatforms(oldState)
+                oldState = moveEnemies(oldState)
                 oldState = collide(oldState)
                 playerMovements.map((p) => {
                     oldState = move(oldState, p.uid, p.movement)
                 })
 
                 oldState = generatePlatforms(oldState)
+                oldState = generateMovingPlatforms(oldState)
+                oldState = generateBoostedPlatforms(oldState)
 
                 const message: WorkerMessage = { message: WorkerMessages.setGameState, state: oldState }
                 parentPort.postMessage(message)

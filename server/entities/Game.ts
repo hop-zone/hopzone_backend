@@ -1,5 +1,6 @@
 import { BaseEntity, Column, Entity, ObjectID, ObjectIdColumn } from "typeorm";
 import { BoostedPlatform } from "./gameobjects/BoostedPlatform";
+import { Enemy } from "./gameobjects/Enemy";
 import { MovingPlatform } from "./gameobjects/MovingPlatform";
 import { Platform } from "./gameobjects/Platform";
 import { PlayerObject } from "./gameobjects/PlayerObject";
@@ -18,7 +19,7 @@ export class Game extends BaseEntity {
 
     @Column()
     deadPlayers: number
-    
+
     @Column()
     platforms: Platform[]
 
@@ -27,5 +28,8 @@ export class Game extends BaseEntity {
 
     @Column()
     boostedPlatforms: BoostedPlatform[]
+
+    @Column()
+    enemies: Enemy[]
 
 }
