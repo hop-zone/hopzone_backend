@@ -1,27 +1,24 @@
 import { Column } from "typeorm";
+import { getRandomInt } from "../../worker/utils/getRandomInt";
 import { GameObject } from "./GameObject";
 
 export class Enemy extends GameObject {
     @Column()
-    width?: number = 100
+    width?: number = 75
 
     @Column()
-    height?: number = 100
+    height?: number = 254.25
 
     @Column()
     originXpos: number;
 
     @Column()
-    movingRange: number
-
-    @Column()
-    xSpeed: number
+    ySpeed: number
 
     constructor(xPos: number, yPos: number) {
         super(xPos, yPos)
 
         this.originXpos = xPos
-        this.movingRange = 400
-        this.xSpeed = 3
+        this.ySpeed = getRandomInt(3, 7)
     }
 }

@@ -58,7 +58,7 @@ const createGame = async () => {
 
     const movingPlatforms = [new MovingPlatform(getRandomInt(-1000, 1000), getRandomInt(0, -500))]
     const boostedPlatforms = [new BoostedPlatform(getRandomInt(-1000, 1000), getRandomInt(0, -500))]
-    const enemies = [new Enemy(getRandomInt(-1000, 1000), getRandomInt(0, -1000))]
+    const enemies = [new Enemy(getRandomInt(-1000, 1000), getRandomInt(-1000, -2000))]
 
     const game = new Game()
     game.players = players

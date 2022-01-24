@@ -34,8 +34,8 @@ export const generateEnemies = (state: Game) => {
 
     let copyOfEnemies = [...state.enemies]
 
-    if (highestPlayer < highestEnemy + 100) {
-        const newEnemy: Enemy = new Enemy(getRandomInt(-1000, 1000), getRandomInt(highestEnemy, highestEnemy - 2000),)
+    if (highestPlayer < highestEnemy + 300) {
+        const newEnemy: Enemy = new Enemy(getRandomInt(-1000, 1000), getRandomInt(highestEnemy - 1000, highestEnemy - 4000),)
         copyOfEnemies.push(newEnemy)
     }
 
