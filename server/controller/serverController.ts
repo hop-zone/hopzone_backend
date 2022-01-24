@@ -114,7 +114,7 @@ export class ServerController {
     if (lobby) {
       await lobby.removePlayer(socket)
 
-      if ((await lobby.state).players.length == 0) {
+      if ((await lobby.state).players?.length == 0) {
         const i = this.gameControllers.indexOf(lobby)
         this.gameControllers.splice(i, 1)
         const roomToDelete = await this.manager.findOne(GameRoom, lobby.roomId)
