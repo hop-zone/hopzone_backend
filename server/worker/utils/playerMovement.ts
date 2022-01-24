@@ -2,7 +2,7 @@ import { Game } from "../../entities/Game"
 import { PlayerObject } from "../../entities/gameobjects/PlayerObject"
 import { EPlayerMovements } from "../../interfaces/workerMessage"
 
-const kill = (state: Game, players: PlayerObject[]) => {
+export const kill = (state: Game, players: PlayerObject[]) => {
     const updatedState = state
 
     players.map((p) => {

@@ -1,11 +1,14 @@
 import { Game } from "../../entities/Game"
 import { BoostedPlatform } from "../../entities/gameobjects/BoostedPlatform"
+import { Enemy } from "../../entities/gameobjects/Enemy"
 import { MovingPlatform } from "../../entities/gameobjects/MovingPlatform"
 import { Platform } from "../../entities/gameobjects/Platform"
 import { PlayerObject } from "../../entities/gameobjects/PlayerObject"
+import { kill } from "./playerMovement"
 
 export const collide = (state: Game) => {
     const updatedState = state
+    const playersToKill: PlayerObject[] = []
     updatedState.players = updatedState.players.map((player) => {
         const updatedPlayer = new PlayerObject(player.x, player.y, player.uid, player.playerNum, player.displayName, player.highestPosition, player.isDead)
         updatedPlayer.ySpeed = player.ySpeed
@@ -32,6 +35,13 @@ export const collide = (state: Game) => {
             }
         })
 
+        state.enemies.map((enemy) => {
+            const EnemyObject = new Enemy(enemy.x, enemy.y)
+            if (updatedPlayer.intersects(EnemyObject)) {
+                playersToKill.push(updatedPlayer)
+            }
+        })
+
         if (collided) {
             updatedPlayer.ySpeed = -updatedPlayer.maxSpeed
         }
@@ -42,6 +52,10 @@ export const collide = (state: Game) => {
 
         return updatedPlayer
     })
+
+    if (playersToKill.length > 0) {
+        updatedState.players = kill(updatedState, playersToKill).players
+    }
 
     return updatedState
 }
