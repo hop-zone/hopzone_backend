@@ -18,6 +18,7 @@ import { collide } from "./utils/collision";
 import { gravity, move } from "./utils/playerMovement";
 import { Enemy } from "../entities/gameobjects/Enemy";
 import { moveEnemies } from "./utils/enemyMovement";
+import { generateEnemies } from "./utils/enemyGeneration";
 
 
 interface IPlayerMovement {
@@ -97,6 +98,7 @@ const runService = async (manager: MongoEntityManager) => {
                 oldState = generatePlatforms(oldState)
                 oldState = generateMovingPlatforms(oldState)
                 oldState = generateBoostedPlatforms(oldState)
+                oldState = generateEnemies(oldState)
 
                 const message: WorkerMessage = { message: WorkerMessages.setGameState, state: oldState }
                 parentPort.postMessage(message)

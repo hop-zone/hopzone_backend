@@ -20,9 +20,6 @@ export const generatePlatforms = (oldState: Game) => {
         }),
     )
 
-
-
-
     const lowestPlayer = Math.max.apply(
         Math,
         state.players.map(function (o) {
@@ -35,11 +32,6 @@ export const generatePlatforms = (oldState: Game) => {
             return o.y
         }),
     )
-
-
-
-
-
 
     let copyOfPlatforms = [...state.platforms]
 
