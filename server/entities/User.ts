@@ -16,6 +16,6 @@ export class User extends BaseEntity {
     @Column()
     highScore?: number
 
-    // @Column()
-    // gamesPlayed?: number
+    @Column({ type: 'timestamp', nullable: true })
+    highScoreDate?: Date
 }

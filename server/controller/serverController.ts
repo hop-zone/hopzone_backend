@@ -2,6 +2,7 @@ import { DecodedIdToken } from 'firebase-admin/lib/auth/token-verifier'
 import { Server, Socket } from 'socket.io'
 import { getMongoManager, MongoEntityManager } from 'typeorm'
 import { GameRoom } from '../entities/GameRoom'
+import { User } from '../entities/User'
 import { GameController } from './gameController'
 
 export class ServerController {
@@ -63,6 +64,10 @@ export class ServerController {
       this.onRestartGame(lobbyId)
     }
     )
+
+    socket.on('f2b_scoreboard', () => {
+      this.onGetScoreboard(socket)
+    })
 
     socket.on('disconnect', () => {
       this.onSocketDisconnect(socket)
@@ -146,10 +151,25 @@ export class ServerController {
     if (lobby) {
 
       await lobby.restartGame()
-      
+
       // this.io.emit('b2f_gamerooms', await this.getRooms())
     }
   }
+
+  onGetScoreboard = async (socket: Socket) => {
+    const players = (await this.manager.find<User>(User)).sort((a, b) => {
+      if (a.highScore > b.highScore) {
+        return -1
+      } if (a.highScore < b.highScore) {
+        return 1
+      }
+      return 0
+    }).slice(0, 10)
+
+    socket.emit('b2f_scoreboard', players)
+
+  };
+
 
   getRooms = async () => {
     return (await this.manager.find<GameRoom>(GameRoom)).filter((r) => { return r.players.length < 4 && r.hasEnded == false && r.hasStarted == false })

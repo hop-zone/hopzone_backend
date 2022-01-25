@@ -26,7 +26,7 @@ export class GameController {
   }
 
   setState = async (value: GameRoom) => {
-    const newState = await value
+    const newState = value
     if (await this.state) {
       await this.manager.update<GameRoom>(GameRoom, this.roomId, newState)
     } else {
@@ -125,7 +125,6 @@ export class GameController {
 
   startGame = async () => {
 
-
     console.log('starting game...');
 
     this.io.to(this.roomId).emit('b2f_gameLoading')
@@ -200,11 +199,8 @@ export class GameController {
         
 
         if (user) {
-          // console.log("found");
-          // console.log(user);
-          
           if (user.highScore < p.score) {
-            await this.manager.update<User>(User, user._id, { highScore: p.score })
+            await this.manager.update<User>(User, user._id, { highScore: p.score, highScoreDate: new Date() })
           }
         } else {
           const newUser = new User()
@@ -212,6 +208,7 @@ export class GameController {
           newUser.uid = p.uid
           newUser.displayName = p.displayName
           newUser.highScore = p.score
+          newUser.highScoreDate = new Date()
 
           await this.manager.save<User>(newUser)
         }
