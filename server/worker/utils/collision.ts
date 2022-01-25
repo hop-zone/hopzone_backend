@@ -10,7 +10,7 @@ export const collide = (state: Game) => {
     const updatedState = state
     const playersToKill: PlayerObject[] = []
     updatedState.players = updatedState.players.map((player) => {
-        const updatedPlayer = new PlayerObject(player.x, player.y, player.uid, player.playerNum, player.displayName, player.highestPosition, player.isDead)
+        const updatedPlayer = new PlayerObject(player.x, player.y, player.uid, player.playerNum, player.displayName, player.highestPosition, player.isDead, player.score)
         updatedPlayer.ySpeed = player.ySpeed
         let collided = false
         let boostedCollision = false;

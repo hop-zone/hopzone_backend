@@ -5,11 +5,17 @@ import { BaseEntity, Column, Entity, ObjectID, ObjectIdColumn } from "typeorm";
 export class User extends BaseEntity {
 
     @ObjectIdColumn()
-    id?: ObjectID
+    _id?: ObjectID
 
     @Column()
     uid?: string
 
     @Column()
     displayName?: string
+
+    @Column()
+    highScore?: number
+
+    // @Column()
+    // gamesPlayed?: number
 }

@@ -82,8 +82,6 @@ const runService = async (manager: MongoEntityManager) => {
 
             if (oldState.alivePlayers == 0) {
                 console.log('everyone dead, quitting...');
-                const message: WorkerMessage = { message: WorkerMessages.endGame }
-                parentPort.postMessage(message)
                 stopService()
             } else {
                 oldState = leaveGame(oldState)
@@ -121,6 +119,8 @@ const stopService = () => {
     if (runner) {
         clearInterval(runner)
     }
+    const message: WorkerMessage = {message: WorkerMessages.exit}
+    parentPort.postMessage(message)
     parentPort.close()
 }
 

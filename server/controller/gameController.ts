@@ -71,7 +71,7 @@ export class GameController {
     const existingPlayer = prevState.players.find(p => p.uid == user.uid)
 
     const newUser = new User()
-    newUser.id = ObjectID()
+    newUser._id = ObjectID()
     newUser.displayName = user.name ? user.name : 'Guest'
     newUser.uid = user.uid
 
@@ -166,8 +166,6 @@ export class GameController {
 
     const state = await this.state
 
-    // console.log(state);
-
 
     this.io.to(this.roomId).emit('b2f_gameState', state)
   };
@@ -180,18 +178,49 @@ export class GameController {
     }
 
     if (message.message == WorkerMessages.exit) {
-      console.log("Workerthread exited.")
-    }
-
-    if (message.message == WorkerMessages.endGame) {
+      
       this.playerControllers.map((c) => {
         c.disableListeners()
       })
       this.playerControllers = []
+      await this.saveHighScores()
       await this.manager.update<GameRoom>(GameRoom, this.roomId, { hasStarted: false, hasEnded: true })
+
+
       this.io.to(this.roomId).emit('b2f_gameState', await this.state)
     }
   }
+
+  saveHighScores = async () => {
+    const gameState = await this.state
+    
+    if (gameState.game) {
+      gameState.game.players.map(async (p) => {
+        const user = await this.manager.findOne<User>(User, { uid: p.uid })
+        
+
+        if (user) {
+          // console.log("found");
+          // console.log(user);
+          
+          if (user.highScore < p.score) {
+            await this.manager.update<User>(User, user._id, { highScore: p.score })
+          }
+        } else {
+          const newUser = new User()
+
+          newUser.uid = p.uid
+          newUser.displayName = p.displayName
+          newUser.highScore = p.score
+
+          await this.manager.save<User>(newUser)
+        }
+      })
+    }
+
+
+  };
+
 
   decodeToken = (socket: Socket): DecodedIdToken => {
     return (socket.request as any).currentUser as DecodedIdToken

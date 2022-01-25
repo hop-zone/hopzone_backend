@@ -46,6 +46,8 @@ export const gravity = (state: Game) => {
             }
 
             if (p.highestPosition > p.y) {
+                p.score = Math.abs(Math.round(p.y/100))
+                
                 p.highestPosition = p.y
             }
 
@@ -56,7 +58,6 @@ export const gravity = (state: Game) => {
         }
         return p
     })
-
 
     updatedState.players = kill(updatedState, playersToKill).players
     return updatedState
