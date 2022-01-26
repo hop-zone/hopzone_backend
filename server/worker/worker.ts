@@ -81,7 +81,7 @@ const runService = async (manager: MongoEntityManager) => {
             let oldState = (await manager.findOne<GameRoom>(GameRoom, workerData.lobbyId)).game
 
             if (oldState.alivePlayers == 0) {
-                console.log('everyone dead, quitting...');
+                console.log(`Everyone dead in lobby with ID ${workerData.lobbyId}, quitting...`)
                 stopService()
             } else {
                 oldState = leaveGame(oldState)
@@ -104,7 +104,7 @@ const runService = async (manager: MongoEntityManager) => {
 
 
         } catch (e) {
-            console.log("something went wrong, exiting thread... ", e);
+            console.log(`Something went wrong in the workerthread from lobby ${workerData.lobbyId}, quitting...`, e);
             stopService()
         }
 
@@ -119,7 +119,7 @@ const stopService = () => {
     if (runner) {
         clearInterval(runner)
     }
-    const message: WorkerMessage = {message: WorkerMessages.exit}
+    const message: WorkerMessage = { message: WorkerMessages.exit }
     parentPort.postMessage(message)
     parentPort.close()
 }
@@ -137,7 +137,7 @@ const handleParentMessage = async (message: WorkerMessage, manager: MongoEntityM
     }
 
     if (message.message == WorkerMessages.exit) {
-        console.log("stopping worker thread...");
+        console.log(`Stopping workerThread for lobby with ID ${workerData.lobbyId}`);
         stopService()
     }
 
@@ -146,11 +146,19 @@ const handleParentMessage = async (message: WorkerMessage, manager: MongoEntityM
     }
 }
     ; (() => {
-        const entitiesDir = __dirname.split('server/')[0] + '/server/entities/**/*{.ts,.js}'
+
+        let entitiesDir
+        if (process.env.NODE_ENV == 'production') {
+            entitiesDir = '/usr/app' + process.env.ENTITIES_DIR
+        } else {
+            entitiesDir = __dirname.split('server/')[0] + process.env.ENTITIES_DIR
+        }
+    
+
         const conn: MongoConnectionOptions = {
             name: 'mongodb',
             type: 'mongodb',
-            url: `mongodb://root:example@127.0.0.1:27017/`,
+            url: process.env.DB_CONNECTION_URL,
             useNewUrlParser: true,
             synchronize: true,
             logging: true,

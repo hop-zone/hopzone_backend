@@ -12,8 +12,6 @@ export const generateLevel = (): Platform[] => {
 
         platforms.map((p) => {
             while (platform.intersects(p)) {
-                console.log('intersection!');
-
                 platform = new Platform(getRandomInt(-1000, 1000), getRandomInt(-200, -1000), getRandomInt(0, 3))
             }
         })

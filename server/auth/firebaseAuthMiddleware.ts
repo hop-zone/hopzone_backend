@@ -20,8 +20,8 @@ async function authMiddleware(
 
     const token: string = headerToken.split(' ')[1]
     verifyToken(token)
-        .then(claims => {
-
+        .then((claims: any) => {
+            if(!claims.name) claims.name = 'Guest'
             ; (socket.request as any).currentUser = claims
             next()
         })

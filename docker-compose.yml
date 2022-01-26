@@ -21,7 +21,7 @@ services:
       ME_CONFIG_MONGODB_ADMINPASSWORD: example
       ME_CONFIG_MONGODB_URL: mongodb://root:example@mongo:27017/
   api:
-    image: backend:latest
+    image: hopzone.azurecr.io/backend
     depends_on:
       - mongo
     build:
@@ -29,5 +29,7 @@ services:
       dockerfile: ./Dockerfile
     environment:
       NODE_ENV: production
+    env_file:
+      - docker.env
     ports:
       - 3001:3001

@@ -32,7 +32,7 @@ export class GameController {
     } else {
       const res = await this.manager.save<GameRoom>(newState)
       this.roomId = res.roomId.toString()
-      console.log('created Game')
+      console.log(`Successfully created a new game session with ID: ${this.roomId}`)
     }
   }
 
@@ -47,17 +47,9 @@ export class GameController {
   init = async () => {
     const newRoom = new GameRoom()
     newRoom.players = []
-
-    // const game = new Game()
-    // game._id = ObjectID()
-    // game.platforms = []
-    // game.players = []
-    // newRoom.game = game
     newRoom.hasStarted = false
     newRoom.hasEnded = false
     newRoom.roomId = ObjectID(this.roomId)
-
-    console.log(newRoom);
 
     await this.setState(newRoom)
   }
@@ -91,6 +83,9 @@ export class GameController {
   }
 
   removePlayer = async (socket: Socket) => {
+
+    console.log(`Removing player ${this.decodeToken(socket).name} from lobby ${this.roomId}`)
+
     const prevState = await this.state
     const user = this.decodeToken(socket)
     socket.leave(this.roomId)
@@ -125,7 +120,7 @@ export class GameController {
 
   startGame = async () => {
 
-    console.log('starting game...');
+    console.log(`Starting game with ID: ${this.roomId}`);
 
     this.io.to(this.roomId).emit('b2f_gameLoading')
 
@@ -133,7 +128,14 @@ export class GameController {
       return { id: p.uid, displayName: p.displayName }
     })
 
-    const worker = new Worker('./server/worker/worker.js', {
+
+
+    const env = process.env.NODE_ENV || 'developmenbt'
+    let path = './server/worker/worker.js'
+
+    if (env == 'production') path = './worker/worker.js'
+
+    const worker = new Worker(path, {
       workerData: {
         path: './worker.ts',
         lobbyId: this.roomId,
@@ -153,8 +155,6 @@ export class GameController {
     worker.on('message', this.handleWorkerMessage)
 
     const rooms = (await this.manager.find<GameRoom>(GameRoom)).filter((r) => { return r.players.length < 4 && r.hasEnded == false && r.hasStarted == false && r.roomId.toString() != this.roomId })
-
-    console.log(rooms);
 
     this.io.emit('b2f_gameRooms', rooms)
 
@@ -177,26 +177,26 @@ export class GameController {
     }
 
     if (message.message == WorkerMessages.exit) {
-      
+
+      console.log(`Wworkerthread for lobby ${this.roomId} exited.`)
+
       this.playerControllers.map((c) => {
         c.disableListeners()
       })
       this.playerControllers = []
       await this.saveHighScores()
       await this.manager.update<GameRoom>(GameRoom, this.roomId, { hasStarted: false, hasEnded: true })
-
-
       this.io.to(this.roomId).emit('b2f_gameState', await this.state)
     }
   }
 
   saveHighScores = async () => {
     const gameState = await this.state
-    
+
     if (gameState.game) {
       gameState.game.players.map(async (p) => {
         const user = await this.manager.findOne<User>(User, { uid: p.uid })
-        
+
 
         if (user) {
           if (user.highScore < p.score) {
