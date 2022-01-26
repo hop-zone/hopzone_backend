@@ -76,6 +76,8 @@ const createGame = async () => {
 const runService = async (manager: MongoEntityManager) => {
     await createGame()
 
+    console.log(`Game with ID ${workerData.lobbyId} has started.`);
+    
     runner = setInterval(async () => {
         try {
             let oldState = (await manager.findOne<GameRoom>(GameRoom, workerData.lobbyId)).game
