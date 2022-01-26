@@ -11,6 +11,7 @@ import { createConnection } from 'typeorm'
 import { Server } from 'socket.io'
 import authMiddleware from './auth/firebaseAuthMiddleware'
 import { ServerController } from './controller/serverController'
+import loggingMiddleware from './logging/loggingMiddlware'
 
 // APP SETUP
 dotenv.config()
@@ -28,7 +29,7 @@ const app = express(),
     const conn: MongoConnectionOptions = {
       name: 'mongodb',
       type: 'mongodb',
-      url: `mongodb://root:example@127.0.0.1:27017/`,
+      url: process.env.DB_CONNECTION_URL,
       useNewUrlParser: true,
       synchronize: true,
       logging: true,
@@ -45,8 +46,9 @@ const app = express(),
 
         const httpServer = createServer(app)
         const io = new Server(httpServer, { cors: { origin: '*', methods: ['GET', 'POST'] } })
-
+        
         io.use(authMiddleware)
+        io.use(loggingMiddleware)
 
 
         const socketServer = new ServerController(io)
@@ -55,7 +57,7 @@ const app = express(),
         socketServer.enableListeners()
 
         httpServer.listen(port, () => {
-          console.info('The socket IO server is listening')
+          console.info(`The socket IO server is listening on port ${port}`)
         })
 
 

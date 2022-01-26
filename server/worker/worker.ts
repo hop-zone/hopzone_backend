@@ -10,6 +10,15 @@ import { EPlayerMovements, WorkerMessage, WorkerMessages } from "../interfaces/w
 import { generateLevel } from "./utils/generateLevel";
 import { ObjectID } from 'mongodb'
 import { getRandomInt } from "./utils/getRandomInt";
+import { MovingPlatform } from "../entities/gameobjects/MovingPlatform";
+import { BoostedPlatform } from "../entities/gameobjects/BoostedPlatform";
+import { generateBoostedPlatforms, generateMovingPlatforms, generatePlatforms } from "./utils/platformGeneration";
+import { movePlatforms } from "./utils/platformMovement";
+import { collide } from "./utils/collision";
+import { gravity, move } from "./utils/playerMovement";
+import { Enemy } from "../entities/gameobjects/Enemy";
+import { moveEnemies } from "./utils/enemyMovement";
+import { generateEnemies } from "./utils/enemyGeneration";
 
 
 interface IPlayerMovement {
@@ -22,183 +31,43 @@ const playerMovements: IPlayerMovement[] = []
 let runner;
 let uidToRemove: string;
 
-const kill = (state: Game, players: PlayerObject[]) => {
-    const updatedState = state
-
-    players.map((p) => {
-        const i = state.players.indexOf(p)
-        updatedState.players.splice(i, 1)
-
-        const deadplayer = state.deadPlayers.find((dead) => {return p.uid == dead.uid})
-
-        if(!deadplayer){
-            updatedState.deadPlayers.push(p)
-        }
-    })
-
-    return updatedState
-}
-
-const gravity = (state: Game) => {
-    const updatedState = state
-    const playersToKill: PlayerObject[] = []
-
-    updatedState.players.forEach((p, i) => {
-        p.y += p.ySpeed
-        p.ySpeed += p.gravity
-
-        const xBeforeUpdate = p.x
-        p.x += p.xSpeed
-
-        //constrain player to world bounds
-        if (p.topLeft.x < -2000 / 2) {
-            p.x = xBeforeUpdate
-        } else if (p.bottomRight.x > 2000 / 2) {
-            p.x = xBeforeUpdate
-        }
-
-        if (p.highestPosition > p.y) {
-            p.highestPosition = p.y
-        }
-
-        if (p.y > p.deathBarrierYpos) {
-            playersToKill.push(p)
-        }
-    })
-
-
-    updatedState.players = kill(updatedState, playersToKill).players
-    return updatedState
-}
-
-const collide = (state: Game) => {
-    const updatedState = state
-    updatedState.players = updatedState.players.map((player) => {
-        const updatedPlayer = new PlayerObject(player.x, player.y, player.uid, player.playerNum, player.displayName, player.highestPosition)
-        updatedPlayer.ySpeed = player.ySpeed
-        let collided = false
-        state.platforms.map((platform) => {
-            const platformObject = new Platform(platform.x, platform.y, platform.platformType)
-            if (updatedPlayer.intersects(platformObject) && updatedPlayer.ySpeed > 0) {
-                collided = true
-            }
-        })
-
-        if (collided) {
-            updatedPlayer.ySpeed = -updatedPlayer.maxSpeed
-        }
-
-        return updatedPlayer
-    })
-
-    return updatedState
-}
-
-const move = (state: Game, uid: string, movement: EPlayerMovements) => {
-
-    const updatedState = state
-
-    updatedState.players = state.players.map((p) => {
-        if (p.uid == uid) {
-            const updatedPlayer = p
-            switch (movement) {
-                case EPlayerMovements.left:
-                    updatedPlayer.xSpeed = -updatedPlayer.movementSpeed
-                    break;
-                case EPlayerMovements.right:
-                    updatedPlayer.xSpeed = updatedPlayer.movementSpeed
-                    break;
-                case EPlayerMovements.stop:
-                    updatedPlayer.xSpeed = 0
-                    break;
-            }
-            return updatedPlayer
-        }
-        return p
-    })
-
-    return updatedState
-}
-
-const generatePlatforms = (oldState: Game) => {
-    const state = oldState
-
-    const highestPlayer = Math.min.apply(
-        Math,
-        state.players.map(function (o) {
-            return o.y
-        }),
-    )
-    const highestPlatform = Math.min.apply(
-        Math,
-        state.platforms.map(function (o) {
-            return o.y
-        }),
-    )
-    const lowestPlayer = Math.max.apply(
-        Math,
-        state.players.map(function (o) {
-            return o.y
-        }),
-    )
-    const lowestPlatform = Math.max.apply(
-        Math,
-        state.platforms.map(function (o) {
-            return o.y
-        }),
-    )
-
-    let copyOfPlatforms = [...state.platforms]
-
-    if (highestPlayer < highestPlatform + 100) {
-        for (let i = 0; i < 2; i++) {
-            const newPlatform: Platform = new Platform(
-                getRandomInt(-1000, 1000),
-                getRandomInt(highestPlatform, highestPlatform - 100),
-                getRandomInt(0, 3)
-            )
-            copyOfPlatforms.push(newPlatform)
-        }
-    }
-
-    if (lowestPlayer < lowestPlatform - 1000) {
-        copyOfPlatforms = copyOfPlatforms.filter((p: Platform) => {
-            return p.y != lowestPlatform
-        })
-    }
-
-    state.platforms = copyOfPlatforms
-
-    return state
-}
 
 const leaveGame = (oldState: Game) => {
-  const updatedState = oldState
+    const updatedState = oldState
 
-  if(uidToRemove){
-      const playertoremove = updatedState.players.find((p) => {return p.uid == uidToRemove})
+    if (uidToRemove) {
+        const playertoremove = updatedState.players.find((p) => { return p.uid == uidToRemove })
 
-      if(playertoremove){
-          const i = updatedState.players.indexOf(playertoremove)
-          updatedState.players.splice(i, 1)
-      }
-  }
+        if (playertoremove) {
+            const i = updatedState.players.indexOf(playertoremove)
+            updatedState.players[i].isDead = true
+        }
+    }
 
-  return updatedState
+    return updatedState
 };
 
-
 const createGame = async () => {
-    const level = generateLevel()
+    const platforms = generateLevel()
+    // const platforms = []
     const players = workerData.players.map((p, i) => {
-        const playerObject = new PlayerObject(i * 100, -400, p.id, i, p.displayName)
+        const playerObject = new PlayerObject(i * 100, -50, p.id, i, p.displayName)
+        platforms.push(new Platform(playerObject.x, 0, getRandomInt(0, 3)))
         return playerObject
     })
 
+    const movingPlatforms = [new MovingPlatform(getRandomInt(-1000, 1000), getRandomInt(0, -500))]
+    const boostedPlatforms = [new BoostedPlatform(getRandomInt(-1000, 1000), getRandomInt(0, -500))]
+    const enemies = [new Enemy(getRandomInt(-1000, 1000), getRandomInt(-1000, -2000))]
+
     const game = new Game()
     game.players = players
-    game.deadPlayers = []
-    game.platforms = level
+    game.alivePlayers = players.length
+    game.deadPlayers = 0
+    game.platforms = platforms
+    game.movingPlatforms = movingPlatforms
+    game.boostedPlatforms = boostedPlatforms
+    game.enemies = enemies
     const message: WorkerMessage = { message: WorkerMessages.setGameState, state: game }
     parentPort.postMessage(message)
 
@@ -207,24 +76,29 @@ const createGame = async () => {
 const runService = async (manager: MongoEntityManager) => {
     await createGame()
 
+    console.log(`Game with ID ${workerData.lobbyId} has started.`);
+    
     runner = setInterval(async () => {
         try {
             let oldState = (await manager.findOne<GameRoom>(GameRoom, workerData.lobbyId)).game
 
-            if (oldState.players.length == 0) {
-                console.log('everyone dead, quitting...');
-                const message: WorkerMessage = { message: WorkerMessages.endGame }
-                parentPort.postMessage(message)
+            if (oldState.alivePlayers == 0) {
+                console.log(`Everyone dead in lobby with ID ${workerData.lobbyId}, quitting...`)
                 stopService()
             } else {
                 oldState = leaveGame(oldState)
                 oldState = gravity(oldState)
+                oldState = movePlatforms(oldState)
+                oldState = moveEnemies(oldState)
                 oldState = collide(oldState)
                 playerMovements.map((p) => {
                     oldState = move(oldState, p.uid, p.movement)
                 })
 
                 oldState = generatePlatforms(oldState)
+                oldState = generateMovingPlatforms(oldState)
+                oldState = generateBoostedPlatforms(oldState)
+                oldState = generateEnemies(oldState)
 
                 const message: WorkerMessage = { message: WorkerMessages.setGameState, state: oldState }
                 parentPort.postMessage(message)
@@ -232,7 +106,7 @@ const runService = async (manager: MongoEntityManager) => {
 
 
         } catch (e) {
-            console.log("something went wrong, exiting thread... ", e);
+            console.log(`Something went wrong in the workerthread from lobby ${workerData.lobbyId}, quitting...`, e);
             stopService()
         }
 
@@ -247,6 +121,8 @@ const stopService = () => {
     if (runner) {
         clearInterval(runner)
     }
+    const message: WorkerMessage = { message: WorkerMessages.exit }
+    parentPort.postMessage(message)
     parentPort.close()
 }
 
@@ -263,28 +139,34 @@ const handleParentMessage = async (message: WorkerMessage, manager: MongoEntityM
     }
 
     if (message.message == WorkerMessages.exit) {
-        console.log("stopping worker thread...");
+        console.log(`Stopping workerThread for lobby with ID ${workerData.lobbyId}`);
         stopService()
     }
 
-    if(message.message == WorkerMessages.leaveGame) {
+    if (message.message == WorkerMessages.leaveGame) {
         uidToRemove = message.playerId
     }
 }
     ; (() => {
-        const entitiesDir = __dirname.split('server/')[0] + '/server/entities/**/*{.ts,.js}'
+
+        let entitiesDir
+        if (process.env.NODE_ENV == 'production') {
+            entitiesDir = '/usr/app' + process.env.ENTITIES_DIR
+        } else {
+            entitiesDir = __dirname.split('server/')[0] + process.env.ENTITIES_DIR
+        }
+    
+
         const conn: MongoConnectionOptions = {
             name: 'mongodb',
             type: 'mongodb',
-            url: `mongodb://root:example@127.0.0.1:27017/`,
+            url: process.env.DB_CONNECTION_URL,
             useNewUrlParser: true,
             synchronize: true,
             logging: true,
             useUnifiedTopology: true,
             entities: [entitiesDir],
         }
-
-        console.log(__dirname);
 
         createConnection(conn).then(async (connection) => {
             const manager = getMongoManager('mongodb')

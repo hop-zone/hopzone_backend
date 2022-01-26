@@ -2,6 +2,7 @@ import { DecodedIdToken } from 'firebase-admin/lib/auth/token-verifier'
 import { Server, Socket } from 'socket.io'
 import { getMongoManager, MongoEntityManager } from 'typeorm'
 import { GameRoom } from '../entities/GameRoom'
+import { User } from '../entities/User'
 import { GameController } from './gameController'
 
 export class ServerController {
@@ -55,8 +56,17 @@ export class ServerController {
     })
 
     socket.on('f2b_startGame', (lobbyId: string) => {
-
       this.onStartGame(lobbyId)
+    })
+
+    socket.on('f2b_restartGame', (lobbyId: string) => {
+
+      this.onRestartGame(lobbyId)
+    }
+    )
+
+    socket.on('f2b_scoreboard', () => {
+      this.onGetScoreboard(socket)
     })
 
     socket.on('disconnect', () => {
@@ -66,10 +76,7 @@ export class ServerController {
 
   onSocketDisconnect = async (socket: Socket) => {
     this.gameControllers.map(controller => {
-      controller.removePlayer(socket).then(async () => {
-        this.io.to(controller.roomId).emit('b2f_lobby', await controller.state)
-        this.io.emit('b2f_gamerooms', await this.getRooms())
-      })
+      this.onLeaveLobby(socket, controller.roomId)
     })
   }
 
@@ -104,15 +111,13 @@ export class ServerController {
 
   onLeaveLobby = async (socket: Socket, roomId: string) => {
 
-    console.log("leaving...");
-
     const lobby = this.gameControllers.find(controller => {
       return controller.roomId == roomId
     })
     if (lobby) {
       await lobby.removePlayer(socket)
 
-      if ((await lobby.state).players.length == 0) {
+      if ((await lobby.state).players?.length == 0) {
         const i = this.gameControllers.indexOf(lobby)
         this.gameControllers.splice(i, 1)
         const roomToDelete = await this.manager.findOne(GameRoom, lobby.roomId)
@@ -131,12 +136,41 @@ export class ServerController {
 
 
     if (lobby) {
-      lobby.startGame()
+      await lobby.startGame()
+      this.io.emit('b2f_gameRooms', await this.getRooms())
     }
   }
 
+  onRestartGame = async (roomId: string) => {
+    const lobby = this.gameControllers.find(controller => {
+      return controller.roomId == roomId
+    })
+
+    if (lobby) {
+
+      await lobby.restartGame()
+
+      // this.io.emit('b2f_gamerooms', await this.getRooms())
+    }
+  }
+
+  onGetScoreboard = async (socket: Socket) => {
+    const players = (await this.manager.find<User>(User)).sort((a, b) => {
+      if (a.highScore > b.highScore) {
+        return -1
+      } if (a.highScore < b.highScore) {
+        return 1
+      }
+      return 0
+    }).slice(0, 10)
+
+    socket.emit('b2f_scoreboard', players)
+
+  };
+
+
   getRooms = async () => {
-    return this.manager.find<GameRoom>(GameRoom)
+    return (await this.manager.find<GameRoom>(GameRoom)).filter((r) => { return r.players.length < 4 && r.hasEnded == false && r.hasStarted == false })
   }
 
   getRoom = async (roomId: string) => {

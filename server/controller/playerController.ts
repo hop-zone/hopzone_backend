@@ -46,6 +46,14 @@ export class PlayerController {
     leaveGame = async () => {
         const message: WorkerMessage = { message: WorkerMessages.leaveGame, playerId: this.uid}
     };
+
+    disableListeners = () => {
+        this.socket.removeAllListeners('f2b_moveRight')
+        this.socket.removeAllListeners('f2b_stopMoving')
+        this.socket.removeAllListeners('f2b_moveLeft')
+        this.socket.removeListener('f2b_leaveLobby', this.leaveGame)
+    };
+    
     
 
     decodeToken = (socket: Socket): DecodedIdToken => {
