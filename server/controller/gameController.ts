@@ -8,6 +8,7 @@ import { Worker, workerData } from 'worker_threads'
 import { WorkerMessage, WorkerMessages } from '../interfaces/workerMessage'
 import { PlayerController } from './playerController'
 import { decodeToken } from '../utils/decodeToken'
+import { SocketMessages } from '../interfaces/socketMessages'
 
 export class GameController {
   public manager: MongoEntityManager
@@ -145,7 +146,7 @@ export class GameController {
     try {
       console.log(`Starting game with ID: ${this.roomId}`);
 
-      this.io.to(this.roomId).emit('b2f_gameLoading')
+      this.io.to(this.roomId).emit(SocketMessages.gameLoading)
 
       const players = (await this.state).players.map((p) => {
         return { id: p.uid, displayName: p.displayName }
@@ -179,7 +180,7 @@ export class GameController {
 
       const rooms = (await this.manager.find<GameRoom>(GameRoom)).filter((r) => { return r.players.length < 4 && r.hasEnded == false && r.hasStarted == false && r.roomId.toString() != this.roomId })
 
-      this.io.emit('b2f_gameRooms', rooms)
+      this.io.emit(SocketMessages.activeRooms, rooms)
     } catch (error) {
       console.log("Something went wrong while starting a game: " + error);
     }
@@ -189,7 +190,7 @@ export class GameController {
     try {
       await this.manager.update<GameRoom>(GameRoom, this.roomId, { hasStarted: false, hasEnded: false, game: undefined })
       const state = await this.state
-      this.io.to(this.roomId).emit('b2f_gameState', state)
+      this.io.to(this.roomId).emit(SocketMessages.gameState, state)
     } catch (error) {
       console.log("Something went wrong whwile restarting the game: " + error);
     }
@@ -200,7 +201,7 @@ export class GameController {
     try {
       if (message.message == WorkerMessages.setGameState) {
         await this.manager.update<GameRoom>(GameRoom, this.roomId, { hasStarted: true, game: message.state })
-        this.io.to(this.roomId).emit('b2f_gameState', await this.state)
+        this.io.to(this.roomId).emit(SocketMessages.gameState, await this.state)
       }
 
       if (message.message == WorkerMessages.exit) {
@@ -213,7 +214,7 @@ export class GameController {
         this.playerControllers = []
         await this.saveHighScores()
         await this.manager.update<GameRoom>(GameRoom, this.roomId, { hasStarted: false, hasEnded: true })
-        this.io.to(this.roomId).emit('b2f_gameState', await this.state)
+        this.io.to(this.roomId).emit(SocketMessages.gameState, await this.state)
       }
     } catch (error) {
       console.log("Something went wrong while handling a message from the worker thread: " + error);

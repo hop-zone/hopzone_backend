@@ -1,5 +1,6 @@
 import { Socket } from "socket.io";
 import { ExtendedError } from "socket.io/dist/namespace";
+import { SocketMessages } from "../interfaces/socketMessages";
 
 const loggingMiddleware = async (socket: Socket, next: (err?: ExtendedError | undefined) => void,
 ) => {
@@ -13,21 +14,21 @@ const loggingMiddleware = async (socket: Socket, next: (err?: ExtendedError | un
         console.log("User disconnected from the socket server: " + user.name);
     })
 
-    socket.on("f2b_newLobby", () => {
+    socket.on(SocketMessages.newLobby, () => {
         console.log(`Creating a new lobby requested by ${user.name}`);
 
     })
 
-    socket.on("f2b_joinLobby", (lobbyId: string) => {
+    socket.on(SocketMessages.joinLobby, (lobbyId: string) => {
         console.log(`User ${user.name} joined lobby with ID: ${lobbyId}`)
 
     })
 
-    socket.on("f2b_leaveLobby", (lobbyId: string) => {
+    socket.on(SocketMessages.leaveLobby, (lobbyId: string) => {
         console.log(`User ${user.name} left lobby with ID: ${lobbyId}`)
     })
 
-    socket.on('f2b_startGame', (id: string) => {
+    socket.on(SocketMessages.startGame, (id: string) => {
         console.log(`User ${user.name} requested to start game with ID: ${id}`);
     })
 

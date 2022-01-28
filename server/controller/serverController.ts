@@ -3,6 +3,7 @@ import { Server, Socket } from 'socket.io'
 import { getMongoManager, MongoEntityManager } from 'typeorm'
 import { GameRoom } from '../entities/GameRoom'
 import { User } from '../entities/User'
+import { SocketMessages } from '../interfaces/socketMessages'
 import { GameController } from './gameController'
 
 export class ServerController {
@@ -35,33 +36,33 @@ export class ServerController {
 
     this.enableSocketListeners(socket)
 
-    socket.emit('b2f_gamerooms', activeRooms)
+    socket.emit(SocketMessages.activeRooms, activeRooms)
   }
 
   enableSocketListeners = (socket: Socket) => {
-    socket.on('f2b_newLobby', () => {
+    socket.on(SocketMessages.newLobby, () => {
       this.onCreateLobby(socket)
     })
 
-    socket.on('f2b_joinLobby', (lobbyId: string) => {
+    socket.on(SocketMessages.joinLobby, (lobbyId: string) => {
       this.onJoinLobby(socket, lobbyId)
     })
 
-    socket.on('f2b_leaveLobby', (lobbyId: string) => {
+    socket.on(SocketMessages.leaveLobby, (lobbyId: string) => {
       this.onLeaveLobby(socket, lobbyId)
     })
 
-    socket.on('f2b_startGame', (lobbyId: string) => {
+    socket.on(SocketMessages.startGame, (lobbyId: string) => {
       this.onStartGame(lobbyId)
     })
 
-    socket.on('f2b_restartGame', (lobbyId: string) => {
+    socket.on(SocketMessages.restartGame, (lobbyId: string) => {
 
       this.onRestartGame(lobbyId)
     }
     )
 
-    socket.on('f2b_scoreboard', () => {
+    socket.on(SocketMessages.getScoreboard, () => {
       this.onGetScoreboard(socket)
     })
 
@@ -83,15 +84,11 @@ export class ServerController {
 
       this.gameControllers.push(newRoom)
 
-
-
-      console.log(state);
-
-      socket.emit('b2f_lobby', state)
-      socket.emit('b2f_gameState', state)
+      socket.emit(SocketMessages.lobbyInfo, state)
+      socket.emit(SocketMessages.gameState, state)
 
       const activeRooms = await this.getRooms()
-      this.io.emit('b2f_gamerooms', activeRooms)
+      this.io.emit(SocketMessages.activeRooms, activeRooms)
     } catch (error) {
       console.log("Something went wrong while creating a lobby: " + error);
 
@@ -108,10 +105,10 @@ export class ServerController {
       if (lobby) {
         await lobby.addPlayer(socket)
 
-        this.io.to(roomId).emit('b2f_lobby', await lobby.state)
-        this.io.to(roomId).emit('b2f_gameState', await lobby.state)
+        this.io.to(roomId).emit(SocketMessages.lobbyInfo, await lobby.state)
+        this.io.to(roomId).emit(SocketMessages.gameState, await lobby.state)
 
-        this.io.emit('b2f_gamerooms', await this.getRooms())
+        this.io.emit(SocketMessages.activeRooms, await this.getRooms())
       }
     } catch (error) {
       console.log("Something went wrong while joining a lobby: " + error);
@@ -137,9 +134,9 @@ export class ServerController {
           const roomToDelete = await this.manager.findOne(GameRoom, lobby.roomId)
           if (roomToDelete) await this.manager.deleteOne(GameRoom, roomToDelete)
         }
-        this.io.emit('b2f_gamerooms', await this.getRooms())
-        this.io.to(lobby.roomId).emit('b2f_lobby', await this.getRoom(roomId))
-        this.io.to(lobby.roomId).emit('b2f_gameState', await this.getRoom(roomId))
+        this.io.emit(SocketMessages.activeRooms, await this.getRooms())
+        this.io.to(lobby.roomId).emit(SocketMessages.lobbyInfo, await this.getRoom(roomId))
+        this.io.to(lobby.roomId).emit(SocketMessages.gameState, await this.getRoom(roomId))
       }
     } catch (error) {
 
@@ -158,7 +155,7 @@ export class ServerController {
 
       if (lobby) {
         await lobby.startGame()
-        this.io.emit('b2f_gameRooms', await this.getRooms())
+        this.io.emit(SocketMessages.activeRooms, await this.getRooms())
       }
     } catch (error) {
       console.log("Something went wrong while starting a game: " + error);
@@ -193,7 +190,7 @@ export class ServerController {
       return 0
     }).slice(0, 10)
 
-    socket.emit('b2f_scoreboard', players)
+    socket.emit(SocketMessages.scoreboard, players)
   };
 
 
