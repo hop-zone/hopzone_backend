@@ -2,11 +2,8 @@ import { DecodedIdToken } from 'firebase-admin/lib/auth/token-verifier'
 import { Server, Socket } from 'socket.io'
 import { getMongoManager, MongoEntityManager } from 'typeorm'
 import { ObjectID } from 'mongodb'
-import { Game } from '../entities/Game'
 import { GameRoom } from '../entities/GameRoom'
 import { User } from '../entities/User'
-import { dirname, resolve } from 'path/posix'
-import { toPromise } from '../utils/toPromise'
 import { Worker, workerData } from 'worker_threads'
 import { WorkerMessage, WorkerMessages } from '../interfaces/workerMessage'
 import { PlayerController } from './playerController'
@@ -214,7 +211,6 @@ export class GameController {
         }
       })
     }
-
 
   };
 
