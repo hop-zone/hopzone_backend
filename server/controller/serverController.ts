@@ -20,14 +20,10 @@ export class ServerController {
 
   restoreSessions = async () => {
     const sessions = await this.manager.find<GameRoom>(GameRoom)
-    const restoredRooms = sessions.map(room => {
-      const restoredRoom = new GameController(this.io)
-      restoredRoom.roomId = room.roomId.toString()
 
-      return restoredRoom
-    })
-
-    this.gameControllers = restoredRooms
+    await Promise.all(sessions.map(async (room) => {
+      await this.manager.delete<GameRoom>(GameRoom, room.roomId)
+    }))
   }
 
   enableListeners = () => {
@@ -81,79 +77,110 @@ export class ServerController {
   }
 
   onCreateLobby = async (socket: Socket) => {
-    const newRoom = new GameController(this.io)
-    await newRoom.init()
-    this.gameControllers.push(newRoom)
+    try {
+      const newRoom = new GameController(this.io)
+      const state = await newRoom.init()
 
-    const state = await newRoom.state
+      this.gameControllers.push(newRoom)
 
-    socket.emit('b2f_lobby', state)
-    socket.emit('b2f_gameState', state)
 
-    const activeRooms = await this.getRooms()
-    this.io.emit('b2f_gamerooms', activeRooms)
+
+      console.log(state);
+
+      socket.emit('b2f_lobby', state)
+      socket.emit('b2f_gameState', state)
+
+      const activeRooms = await this.getRooms()
+      this.io.emit('b2f_gamerooms', activeRooms)
+    } catch (error) {
+      console.log("Something went wrong while creating a lobby: " + error);
+
+    }
+
   }
 
   onJoinLobby = async (socket: Socket, roomId: string) => {
-    const lobby = this.gameControllers.find(controller => {
-      return controller.roomId == roomId
-    })
+    try {
+      const lobby = this.gameControllers.find(controller => {
+        return controller.roomId == roomId
+      })
 
-    if (lobby) {
-      await lobby.addPlayer(socket)
+      if (lobby) {
+        await lobby.addPlayer(socket)
 
-      this.io.to(roomId).emit('b2f_lobby', await lobby.state)
-      this.io.to(roomId).emit('b2f_gameState', await lobby.state)
+        this.io.to(roomId).emit('b2f_lobby', await lobby.state)
+        this.io.to(roomId).emit('b2f_gameState', await lobby.state)
 
-      this.io.emit('b2f_gamerooms', await this.getRooms())
+        this.io.emit('b2f_gamerooms', await this.getRooms())
+      }
+    } catch (error) {
+      console.log("Something went wrong while joining a lobby: " + error);
+
     }
+
   }
 
   onLeaveLobby = async (socket: Socket, roomId: string) => {
 
-    console.log("leaving lobby...");
-    
-    const lobby = this.gameControllers.find(controller => {
-      return controller.roomId == roomId
-    })
-    if (lobby) {
-      await lobby.removePlayer(socket)
+    try {
+      console.log("leaving lobby...");
 
-      if ((await lobby.state).players?.length == 0) {
-        const i = this.gameControllers.indexOf(lobby)
-        this.gameControllers.splice(i, 1)
-        const roomToDelete = await this.manager.findOne(GameRoom, lobby.roomId)
-        if (roomToDelete) await this.manager.deleteOne(GameRoom, roomToDelete)
+      const lobby = this.gameControllers.find(controller => {
+        return controller.roomId == roomId
+      })
+      if (lobby) {
+        await lobby.removePlayer(socket)
+
+        if ((await lobby.state).players?.length == 0) {
+          const i = this.gameControllers.indexOf(lobby)
+          this.gameControllers.splice(i, 1)
+          const roomToDelete = await this.manager.findOne(GameRoom, lobby.roomId)
+          if (roomToDelete) await this.manager.deleteOne(GameRoom, roomToDelete)
+        }
+        this.io.emit('b2f_gamerooms', await this.getRooms())
+        this.io.to(lobby.roomId).emit('b2f_lobby', await this.getRoom(roomId))
+        this.io.to(lobby.roomId).emit('b2f_gameState', await this.getRoom(roomId))
       }
-      this.io.emit('b2f_gamerooms', await this.getRooms())
-      this.io.to(lobby.roomId).emit('b2f_lobby', await this.getRoom(roomId))
-      this.io.to(lobby.roomId).emit('b2f_gameState', await this.getRoom(roomId))
+    } catch (error) {
+
+      console.log("Something went wrong while removing a player: " + error);
+
     }
+
   }
 
   onStartGame = async (roomId: string) => {
-    const lobby = this.gameControllers.find(controller => {
-      return controller.roomId == roomId
-    })
+    try {
+      const lobby = this.gameControllers.find(controller => {
+        return controller.roomId == roomId
+      })
 
 
-    if (lobby) {
-      await lobby.startGame()
-      this.io.emit('b2f_gameRooms', await this.getRooms())
+      if (lobby) {
+        await lobby.startGame()
+        this.io.emit('b2f_gameRooms', await this.getRooms())
+      }
+    } catch (error) {
+      console.log("Something went wrong while starting a game: " + error);
     }
+
   }
 
   onRestartGame = async (roomId: string) => {
-    const lobby = this.gameControllers.find(controller => {
-      return controller.roomId == roomId
-    })
+    try {
+      const lobby = this.gameControllers.find(controller => {
+        return controller.roomId == roomId
+      })
 
-    if (lobby) {
+      if (lobby) {
 
-      await lobby.restartGame()
+        await lobby.restartGame()
 
-      // this.io.emit('b2f_gamerooms', await this.getRooms())
+      }
+    } catch (error) {
+      console.log("Something went wrong while restarting a game: " + error);
     }
+
   }
 
   onGetScoreboard = async (socket: Socket) => {
@@ -167,7 +194,6 @@ export class ServerController {
     }).slice(0, 10)
 
     socket.emit('b2f_scoreboard', players)
-
   };
 
 

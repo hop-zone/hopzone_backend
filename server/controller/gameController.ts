@@ -57,6 +57,8 @@ export class GameController {
       newRoom.roomId = ObjectID(this.roomId)
 
       await this.setState(newRoom)
+
+      return newRoom
     } catch (error) {
       console.log("Something went wrong while initializing the game room: " + error);
 
@@ -190,9 +192,7 @@ export class GameController {
       this.io.to(this.roomId).emit('b2f_gameState', state)
     } catch (error) {
       console.log("Something went wrong whwile restarting the game: " + error);
-
     }
-
   };
 
 
