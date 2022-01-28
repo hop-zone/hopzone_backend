@@ -10,6 +10,8 @@ services:
     environment:
       MONGO_INITDB_ROOT_USERNAME: root
       MONGO_INITDB_ROOT_PASSWORD: example
+    volumes:
+      - hopzone_db:/data/db
 
   mongo-express:
     image: mongo-express
@@ -33,3 +35,6 @@ services:
       - docker.env
     ports:
       - 3001:3001
+
+volumes:
+  hopzone_db:

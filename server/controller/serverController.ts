@@ -111,6 +111,8 @@ export class ServerController {
 
   onLeaveLobby = async (socket: Socket, roomId: string) => {
 
+    console.log("leaving lobby...");
+    
     const lobby = this.gameControllers.find(controller => {
       return controller.roomId == roomId
     })
