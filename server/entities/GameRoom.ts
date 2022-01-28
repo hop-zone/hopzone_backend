@@ -8,6 +8,7 @@ import { User } from "./User";
 @Entity('GameRooms')
 export class GameRoom extends BaseEntity {
 
+
     @ObjectIdColumn()
     roomId?: ObjectID
 
