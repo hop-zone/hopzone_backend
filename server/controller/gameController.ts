@@ -1,10 +1,9 @@
-import { DecodedIdToken } from 'firebase-admin/lib/auth/token-verifier'
 import { Server, Socket } from 'socket.io'
 import { getMongoManager, MongoEntityManager } from 'typeorm'
 import { ObjectID } from 'mongodb'
 import { GameRoom } from '../entities/GameRoom'
 import { User } from '../entities/User'
-import { Worker, workerData } from 'worker_threads'
+import { Worker } from 'worker_threads'
 import { WorkerMessage, WorkerMessages } from '../interfaces/workerMessage'
 import { PlayerController } from './playerController'
 import { decodeToken } from '../utils/decodeToken'
@@ -96,7 +95,6 @@ export class GameController {
       await this.setState(prevState)
     } catch (error) {
       console.log("Something went wrong while adding a player to the lobby: " + error);
-
     }
 
   }
