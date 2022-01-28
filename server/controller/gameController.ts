@@ -206,7 +206,7 @@ export class GameController {
 
       if (message.message == WorkerMessages.exit) {
 
-        console.log(`Wworkerthread for lobby ${this.roomId} exited.`)
+        console.log(`Workerthread for lobby ${this.roomId} exited.`)
 
         this.playerControllers.map((c) => {
           c.disableListeners()
